@@ -11,23 +11,45 @@
   var hyperlinks = new Array();
 
 
+  var width=125;
+  var height=140;
+  var zoomFactor=4;
+  var radius=5;
+
+  var visibleCanvas;
+  var visibleContext;
+  var titleInput;
+  var linkInput;
+  var id;
+  var id_d;
+
+  var lastX=-1;
+  var lastY=-1;
+
+  var regionCanvasCount = 2;
+  //canvas id 1 = empty space
+  //canvas id 2 = regular wall
+  var regionCanvas = new Uint32Array(width*height);
+  var pivotPoints = {};
+  var boundingBoxes = {};
+
 
 /*
 //arne
   var colorPalette = [
            "#000000",
-            "#9D9D9D",
-            "#FFFFFF",
-            "#BE2633",
-            "#E06F8B",
-            "#493C2B",
-            "#A46422",
-            "#EB8931",
-            "#F7E26B",
-            "#2F484E",
-            "#44891A",
-            "#A3CE27",
-            "#1B2632",
+            "#c2c2c2",
+            "#0000ff",
+            "#bfe3f3",
+            "#ff8700",
+            "#ffff00",
+            "#b4772c",
+            "#ff0000",
+            "#00bd00",
+            "#bc4499",
+            "#ffaf00",
+            "#ffadd5",
+            "#00ffff",
             "#005784",
             "#31A2F2",
             "#B2DCEF"
@@ -37,23 +59,43 @@
 //dawnbringer
 //http://www.pixeljoint.com/forum/forum_posts.asp?TID=12795
   var colorPalette = [
-            "#140c1c",
-            "#442434",
-            "#30346d",
-            "#4e4a4e",
-            "#854c30",
-            "#346524",
-            "#d04648",
-            "#757161",
-            "#597dce",
-            "#d27d2c",
-            "#8595a1",
-            "#6daa2c",
-            "#d2aa99",
-            "#6dc2ca",
-            "#dad45e",
-            "#deeed6"
+          "#000000",//0
+           "#000000",//1
+            "#c2c2c2",//2
+            "#0000ff",//3
+            "#bfe3f3",//4
+            "#ff8700",//5
+            "#ffff00",//6
+            "#b4772c",//7
+            "#ff0000",//8
+            "#00bd00",//9
+            "#bc4499",//10
+            "#ffaf00",//11
+            "#00ffff",//12
+            "#ffadd5",//13
+            "#000079",//14
+            "#8f0000",//15
+            "#ff00ff", //16
+            "#351d1d", //17
             ];
+
+var eraserCol=0;
+var wallCol=2;
+var bumperCol=3;
+var bumperAuraCol=14;
+var flipperCol=4;
+var leftFlipperPivotCol=5;
+var rightFlipperPivotCol=6;
+var ballSpawnCol=7;
+var magnetCol=8;
+var magnetAuraCol=15;
+var connectionCol=9;
+var targetCol=10;
+var targetActiveCol=16;
+var togglableWallCol=11;
+var togglableWallDisabledCol=17;
+var exitCol=13;
+var springCol=12;
 
 /*
 //spectrum 
@@ -78,7 +120,6 @@
 */
   var colorElem = new Array();
     var layerElem = new Array();
-  var colorIndex=getRandomInt(7,16);
 
 var aurl = document.createElement('a');
 function qualifyURL(url) {
@@ -284,7 +325,9 @@ function press(evt){
     setLayer(canvasIndex+1); 
   } */
   if (evt.keyCode===67) { //c
-    copyImage=JSON.stringify(canvasses[canvasIndex])
+    floodFills();
+
+    //copyImage=JSON.stringify(canvasses[canvasIndex])
   } else if (evt.keyCode===86){ //v
     if (copyImage!==null){
       preserveUndoState();
@@ -334,27 +377,13 @@ function press(evt){
     if (undoList.length>0){
       var dat = undoList.pop();
       canvasses[dat.canvasIndex]=dat.canvasDat;
-      setLayer(dat.canvasIndex+1);
+      setVisuals();
     }
   }
 }
   function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min)) + min;
   }
-  var width=125;
-  var height=140;
-  var zoomFactor=4;
-  var radius=5;
-
-  var visibleCanvas;
-  var visibleContext;
-  var titleInput;
-  var linkInput;
-  var id;
-  var id_d;
-
-  var lastX=-1;
-  var lastY=-1;
 
   var bucketElem;
   function titleChange(newTitle){
@@ -389,19 +418,12 @@ function clearPalette(){
     }
 
 
+var colorElem = new Array();
+
   function dropDownSelect(dropdown,val) {
     hyperlinks[canvasIndex][dropdown-1]=val;
   }
 
-    function setColor(newColorIndex) {
-      colorIndex=newColorIndex;
-        for(var i=0;i<16;i++){
-          if (colorElem[i]!==null){
-            colorElem[i].setAttribute("class","unselected");
-          }
-        }
-        colorElem[colorIndex].setAttribute("class","selected");
-    }
 
 
     function init() {
@@ -420,11 +442,6 @@ function clearPalette(){
         
       }
 
-      for (var i=0;i<16;i++){
-        elem = document.getElementById("thumbnail"+(i+1));        
-        thumbnailCanvas[i]=elem;
-        thumbnailContext[i]=elem.getContext("2d");
-      }
       for (var i=0;i<16;i++){
         elem = document.getElementById("col"+(i+1));
         dropdownOption[i] = elem;        
@@ -471,8 +488,6 @@ function clearPalette(){
       id = visibleContext.createImageData(1,1); // only do this once per page
       id_d=id.data;
       setVisuals();
-      setColor(colorIndex);
-
 
       getData();
     }
@@ -494,7 +509,7 @@ function clearPalette(){
         var decoded = decodeURI(ss2);
         var decoded2 = decoded.substring(0, decoded.length - 3);
         stringToState(decoded2);
-        setVisuals(true);
+        setVisuals();
       }
       r.readAsText(f);
     } else { 
@@ -542,15 +557,14 @@ function clearPalette(){
       var code=result["files"]["game.txt"]["content"];
       
       stringToState(code);
-      setVisuals(true);
-      setLayer(canvasIndex+1); 
+      setVisuals();
     }
     githubHTTPClient.setRequestHeader("Content-type","application/x-www-form-urlencoded");
     githubHTTPClient.send();
   }
 
 
-    function setVisuals(genAllThumbnails){
+    function setVisuals(){
       //visibleContext.drawImage(canvasses[canvasIndex], 0, 0); 
       //visibleContext.drawImage(canvasses[canvasIndex], 0, 0,width*zoomFactor,height*zoomFactor); 
       canvas=canvasses[canvasIndex];
@@ -617,7 +631,7 @@ function clearPalette(){
     lastY=Math.floor(-1+startTargetY/zoomFactor);
     
     preserveUndoState();
-    mouseMove(e);
+    mouseMove(e,e.type==="mousedown");
     if(radius===0){
       drawing=0;
     }
@@ -625,7 +639,8 @@ function clearPalette(){
 
   function mouseUp(e){
     e = e || window.event;
-
+    calcHalo();
+    setVisuals();
     drawing=0;
     lastX=-1;
     lastY=-1;
@@ -639,6 +654,17 @@ function clearPalette(){
     lastY=-1;
   }
 
+  var activeTool="wall";
+  function selectTool(toolName,col){
+    activeTool=toolName;
+    for (var i=0;i<16;i++){
+      var elem = colorElem[i];
+      if (elem!=null){
+        elem.setAttribute("class","unselected");
+      }
+    }
+    colorElem[col].setAttribute("class","selected");
+  }
 
   function line (x1, y1,x2,y2) {
     var coordinatesArray = new Array();
@@ -669,8 +695,325 @@ function clearPalette(){
     return coordinatesArray;
   }
 
+function eraserDraw(x,y){
+  //var points = [[x,y],[x-1,y],[x,y+1],[x+1,y],[x,y-1]];
 
-  function mouseMove(e){
+  var points = [
+              [x-1,y+2],[x,y+2],[x+1,y+2],
+    [x-2,y+1],[x-1,y+1],[x,y+1],[x+1,y+1],[x+2,y+1],
+    [x-2,y  ],[x-1,y  ],[x,y  ],[x+1,y  ],[x+2,y  ],
+    [x-2,y-1],[x-1,y-1],[x,y-1],[x+1,y-1],[x+2,y-1],
+              [x-1,y-2],[x,y-2],[x+1,y-2]
+    ];
+  for (var i=0;i<points.length;i++){
+    var px=points[i][0];
+    var py=points[i][1];
+    if (px>=0&&px<width&&py>=0&&py<height){
+      canvas[px+width*py]=eraserCol;
+    }
+  }   
+}
+
+function wallDraw(x,y){
+  var px=x;
+  var py=y;
+  if (px>=0&&px<width&&py>=0&&py<height){
+    canvas[px+width*py]=wallCol;
+  }
+}
+
+function bumperDraw(x,y){
+  var points = [[x,y],[x-1,y],[x,y+1],[x+1,y],[x,y-1]];
+
+  for (var i=0;i<points.length;i++){
+    var px=points[i][0];
+    var py=points[i][1];
+    if (px>=0&&px<width&&py>=0&&py<height){
+      canvas[px+width*py]=bumperCol;
+    }
+  }   
+}
+
+function flipperDraw(x,y){
+  var points = [[x,y],[x-1,y],[x,y+1],[x+1,y],[x,y-1]];
+
+  for (var i=0;i<points.length;i++){
+    var px=points[i][0];
+    var py=points[i][1];
+    if (px>=0&&px<width&&py>=0&&py<height){
+      val = canvas[px+width*py];
+      if (val!==leftFlipperPivotCol&&val!==rightFlipperPivotCol){
+        canvas[px+width*py]=flipperCol;
+      }
+    }
+  }   
+
+
+  neighbours=[[px+1,py],[px,py+1],[px-1,py],[px,py-1]];
+  fillCanvas[px+width*py]=1;
+  var foundflipper=false;
+  for(var i=0;i<neighbours.length;i++){
+    var n = neighbours[i];
+    var nx=n[0];
+    var ny=n[1];
+    if (nx>=0&&nx<width&&ny>=0&&ny<height&&fillCanvas[nx+width*ny]===0){
+      var val = canvas[nx+width*ny];
+      if (  val===leftFlipperPivotCol   ||
+            val===rightFlipperPivotCol  ||
+            val===flipperCol 
+          ) {
+        if (foundflipper){
+          canvas[nx+width*ny]=flipperCol;
+        } else if (val===leftFlipperPivotCol||val===rightFlipperPivotCol){
+          foundflipper=true;
+        }
+        fillCanvas[nx+width*ny]=1;
+        neighbours.push([nx+1,ny]);
+        neighbours.push([nx-1,ny]);
+        neighbours.push([nx,ny+1]);
+        neighbours.push([nx,ny-1]);
+      }
+    }
+  }
+  if (foundflipper===false){
+    canvas[x+width*y]=leftFlipperPivotCol;
+  }
+
+  for (var i=0;i<width*height;i++){
+    fillCanvas[i]=0;
+  }
+
+}
+
+fillCanvas = new Uint8Array(width*height);
+function leftFlipperPivotDraw(x,y){
+  var px=x;
+  var py=y;
+
+  if (px>=0&&px<width&&py>=0&&py<height){
+    canvas[px+width*py]=leftFlipperPivotCol;
+  }
+  neighbours=[[px+1,py],[px,py+1],[px-1,py],[px,py-1]];
+  fillCanvas[px+width*py]=1;
+  for(var i=0;i<neighbours.length;i++){
+    var n = neighbours[i];
+    var nx=n[0];
+    var ny=n[1];
+    if (nx>=0&&nx<width&&ny>=0&&ny<height&&fillCanvas[nx+width*ny]===0){
+      var val = canvas[nx+width*ny];
+      if (  val===leftFlipperPivotCol   ||
+            val===rightFlipperPivotCol  ||
+            val===flipperCol 
+          ) {
+        canvas[nx+width*ny]=flipperCol;
+        fillCanvas[nx+width*ny]=1;
+        neighbours.push([nx+1,ny]);
+        neighbours.push([nx-1,ny]);
+        neighbours.push([nx,ny+1]);
+        neighbours.push([nx,ny-1]);
+      }
+    }
+
+  }
+
+  for (var i=0;i<width*height;i++){
+    fillCanvas[i]=0;
+  }
+}
+
+
+function rightFlipperPivotDraw(x,y){
+  var px=x;
+  var py=y;
+
+  if (px>=0&&px<width&&py>=0&&py<height){
+    canvas[px+width*py]=rightFlipperPivotCol;
+  }
+  neighbours=[[px+1,py],[px,py+1],[px-1,py],[px,py-1]];
+  fillCanvas[px+width*py]=1;
+  for(var i=0;i<neighbours.length;i++){
+    var n = neighbours[i];
+    var nx=n[0];
+    var ny=n[1];
+    if (nx>=0&&nx<width&&ny>=0&&ny<height&&fillCanvas[nx+width*ny]===0){
+      var val = canvas[nx+width*ny];
+      if (  val===leftFlipperPivotCol   ||
+            val===rightFlipperPivotCol  ||
+            val===flipperCol 
+          ) {
+        canvas[nx+width*ny]=flipperCol;
+        fillCanvas[nx+width*ny]=1;
+        neighbours.push([nx+1,ny]);
+        neighbours.push([nx-1,ny]);
+        neighbours.push([nx,ny+1]);
+        neighbours.push([nx,ny-1]);
+      }
+    }
+
+  }
+
+  for (var i=0;i<width*height;i++){
+    fillCanvas[i]=0;
+  }
+}
+
+function ballSpawnDraw(x,y){
+  var px=x;
+  var py=y;
+  for(var i=0;i<width*height;i++){
+    if (canvas[i]===ballSpawnCol){
+      canvas[i]=0;
+    }
+  }
+  if (px<3){
+    px=3;
+  } else if (px>width-3){
+    px=width-3;
+  }
+  if (py<3){
+    py=3;
+  } else if (py>height-3){
+    py=height-3;
+  }
+
+  var points = [
+                [px-3,py-0],
+                [px-3,py-1],
+                [px-2,py-2],
+                [px-1,py-3],
+                [px+0,py-3],
+                [px+1,py-2],
+                [px+2,py-1],
+                [px+2,py-0],
+                [px+1,py+1],
+                [px+0,py+2],
+                [px-1,py+2],
+                [px-2,py+1]
+                ];
+  for (var i=0;i<points.length;i++){
+    var p = points[i];
+    canvas[p[0]+width*p[1]]=ballSpawnCol;
+  }
+}
+
+function magnetDraw(x,y){
+  var points = [[x,y],[x-1,y],[x,y+1],[x+1,y],[x,y-1]];
+
+  for (var i=0;i<points.length;i++){
+    var px=points[i][0];
+    var py=points[i][1];
+    if (px>=0&&px<width&&py>=0&&py<height){
+      canvas[px+width*py]=magnetCol;
+    }
+  }   
+}
+
+function connectionDraw(x,y){
+  var px=x;
+  var py=y;
+  if (px>=0&&px<width&&py>=0&&py<height){
+    canvas[px+width*py]=connectionCol;
+  }
+}
+
+function targetDraw(x,y){
+  var points = [[x,y],[x-1,y],[x,y+1],[x+1,y],[x,y-1]];
+
+  for (var i=0;i<points.length;i++){
+    var px=points[i][0];
+    var py=points[i][1];
+    if (px>=0&&px<width&&py>=0&&py<height){
+      canvas[px+width*py]=targetCol;
+    }
+  }   
+
+}
+
+function toggableWallDraw(x,y){
+  var points = [[x,y],[x-1,y],[x,y+1],[x+1,y],[x,y-1]];
+
+  for (var i=0;i<points.length;i++){
+    var px=points[i][0];
+    var py=points[i][1];
+    if (px>=0&&px<width&&py>=0&&py<height){
+      canvas[px+width*py]=togglableWallCol;
+    }
+  }   
+}
+
+function springDraw(x,y){
+  var px=x;
+  var py=y;
+  if (px>=0&&px<width&&py>=0&&py<height){
+    canvas[px+width*py]=springCol;
+  }
+}
+
+function exitPointDraw(x,y){
+  var px=x;
+  var py=y;
+  for(var i=0;i<width*height;i++){
+    if (canvas[i]===exitCol){
+      canvas[i]=0;
+    }
+  }
+  if (px<2){
+    px=2;
+  } else if (px>width-3){
+    px=width-3;
+  }
+  if (py<2){
+    py=2;
+  } else if (py>height-3){
+    py=height-3;
+  }
+
+  var points = [
+                [px,py],
+                [px-1,py-1],[px-2,py-2],
+                [px+1,py-1],[px+2,py-2],
+                [px-1,py+1],[px-2,py+2],
+                [px+1,py+1],[px+2,py+2]
+                ];
+  for (var i=0;i<points.length;i++){
+    var p = points[i];
+    canvas[p[0]+width*p[1]]=exitCol;
+  }
+}
+
+  var interpolateBrush = {
+    eraser: true,
+    wall: true,
+    bumper: true,
+    flipper: true,
+    leftFlipperPivot: false,
+    rightFlipperPivot: false,
+    ballSpawn: false,
+    magnet: true,
+    connection: true,
+    target: true,
+    toggableWall: true,
+    spring: true,
+    exitPoint: false
+  }
+
+  var drawFuncs = {
+    eraser: eraserDraw,
+    wall: wallDraw,
+    bumper: bumperDraw,
+    flipper: flipperDraw,
+    leftFlipperPivot: leftFlipperPivotDraw,
+    rightFlipperPivot: rightFlipperPivotDraw,
+    ballSpawn: ballSpawnDraw,
+    magnet: magnetDraw,
+    connection: connectionDraw,
+    target: targetDraw,
+    toggableWall: toggableWallDraw,
+    spring: springDraw,
+    exitPoint: exitPointDraw
+  }
+
+  function mouseMove(e,mousedown){
     e = e || window.event;
 
     if (drawing===0)
@@ -685,20 +1028,16 @@ function clearPalette(){
     var canvas=canvasses[canvasIndex];
 
     var points;
-    if (lastX===-1) {
+    if (interpolateBrush[activeTool]===false||lastX<0||lastY<0) {
       points=[[x,y]];
     } else {
-      points=line(x,y,lastX,lastY);
+      points=line(lastX,lastY,x,y);
     }
 
+    var brushFn=drawFuncs[activeTool];
     for (var i=0;i<points.length;i++){
-      var p=points[i];
-
-      if (radius>0){
-        drawCircle(canvas,p[0],p[1],radius,colorIndex);
-      } else {
-        floodFill(canvas, p[0], p[1], colorIndex);
-      }
+     var p=points[i];
+     brushFn(p[0],p[1]);
     }
   
 
@@ -713,6 +1052,245 @@ function clearPalette(){
     lastX=Math.floor(-1+coords[0]/zoomFactor);
     lastY=Math.floor(-1+coords[1]/zoomFactor);
     
+  }
+
+  function floodFills(){
+    boundingBoxes = {};
+
+    for (var i=0;i<width*height;i++){
+      regionCanvas[i]=0;
+    }
+
+    regionCanvasCount = 2;
+    for (var x=0;x<width;x++){
+      for (var y=0;y<height;y++) {
+        if (regionCanvas[x+width*y]===0){
+          var val =canvas[x+width*y];
+          if (val===eraserCol||val===magnetAuraCol||val===bumperAuraCol){
+            regionCanvas[x+width*y]=eraserCol;
+          } else if (val===wallCol) {
+            regionCanvas[x+width*y]=wallCol;
+          } else {
+            fillRegion(x,y,regionCanvasCount+1);
+            regionCanvasCount++;
+          }
+        }
+      }
+    }
+    console.log(regionCanvasCount);
+
+    drawBB();
+    setVisuals();
+  }
+
+  function fillRegion(x,y,regionNumber){
+    var originCol=canvas[x+width*y];
+    var originFlipper = 
+      originCol===leftFlipperPivotCol ||
+      originCol===rightFlipperPivotCol ||
+      originCol===flipperCol;
+    regionCoordIndex=x+width*y;
+    regionCanvas[regionCoordIndex]=regionNumber;
+
+    if ((regionNumber) in boundingBoxes){
+      bbox = boundingBoxes[regionNumber];
+      bbox[0]=Math.min(bbox[0],nx);
+      bbox[1]=Math.min(bbox[1],ny);
+      bbox[2]=Math.max(bbox[2],nx);
+      bbox[3]=Math.max(bbox[3],ny);
+    } else {
+      boundingBoxes[regionNumber]=[x,y,x,y];
+    }
+
+    var neighbours = [[x+1,y],[x-1,y],[x,y+1],[x,y-1]];
+    for(var i=0;i<neighbours.length;i++){
+      var n = neighbours[i];
+      var nx=  n[0];
+      var ny = n[1];
+      if (nx>=0&&nx<width&&ny>=0&&ny<height&&canvas[nx+width*ny]>wallCol &&regionCanvas[nx+width*ny]===0) {
+        var val = canvas[nx+width*ny];
+        if (val==originCol ||
+              (originFlipper && (
+                val === leftFlipperPivotCol ||
+                val === rightFlipperPivotCol ||
+                val === flipperCol ) ) ) {
+          regionCanvas[nx+width*ny]=regionNumber;
+          neighbours.push([nx+1,ny]);
+          neighbours.push([nx-1,ny]);
+          neighbours.push([nx,ny+1]);
+          neighbours.push([nx,ny-1]);
+
+          if (regionNumber in boundingBoxes){
+            bbox = boundingBoxes[regionNumber];
+            bbox[0]=Math.min(bbox[0],nx);
+            bbox[1]=Math.min(bbox[1],ny);
+            bbox[2]=Math.max(bbox[2],nx);
+            bbox[3]=Math.max(bbox[3],ny);
+          } else {
+            boundingBoxes[regionNumber]=[nx,ny,nx,ny];
+          }
+
+          if (originFlipper){
+            if (val===leftFlipperPivotCol) {
+              pivotPoints[regionNumber]=[nx,ny,1];
+            } else if (val === rightFlipperPivotCol){
+              pivotPoints[regionNumber]=[nx,ny,2];
+            }
+          }
+        }
+      }
+    }
+  }
+
+  function drawBB(){
+    canvasses[0]=canvas;
+    var leftCanvas=uint8ar_copy(canvas);
+    var rightCanvas=uint8ar_copy(canvas);
+    var bothCanvas=uint8ar_copy(canvas);
+    canvasses[1]=leftCanvas;
+    canvasses[2]=rightCanvas;
+    canvasses[3]=bothCanvas;
+    for (var i=0;i<regionCanvas.length;i++){
+      var regionNumber = regionCanvas[i];
+      if (regionNumber in pivotPoints){
+        if(pivotPoints[regionNumber][2]===1){
+          leftCanvas[i]=0;
+          bothCanvas[i]=0;
+        } else {
+          rightCanvas[i]=0;
+          bothCanvas[i]=0;
+        }
+      }
+    }
+/*
+    for (var x=1;x<width-1;x++){
+      for (var y=1;y<height-1;y++){
+        var i = x+y*width;
+        if (
+          canvas[i]===magnetAuraCol || 
+          canvas[i]===bumperAuraCol)
+        {
+          canvas[i]=0;
+        }
+      }
+    }*/
+
+    for (var regionNumber in pivotPoints){
+
+      var ppoint = pivotPoints[regionNumber];
+      var bbox = boundingBoxes[regionNumber];
+      var orientation=ppoint[2];
+      if (orientation===2){
+        continue;
+      }
+
+      var bboxCorners = [
+        [bbox[0],bbox[1]],
+        [bbox[2],bbox[1]],
+        [bbox[2],bbox[3]],
+        [bbox[0],bbox[3]]];
+      var maxDistSq=0;
+      for (var i=0;i<3;i++){  
+        var p = bboxCorners[i];
+        var dx = p[0]-ppoint[0];
+        var dy = p[1]-ppoint[1];
+        var dist =dx*dx+dy*dy;
+        if (dist>maxDistSq){
+          maxDistSq=dist;        
+        }
+      }
+      var rad=Math.sqrt(maxDistSq);
+      var px=ppoint[0];
+      var py=ppoint[1];
+
+      theta=Math.PI*(-30)/180.0;
+      //draw bounding box
+      for (var x=bbox[0];x<=bbox[2];x++){      
+        for (var y=bbox[1];y<=bbox[3];y++){
+          var i = x+width*y;
+          if (regionCanvas[i]===regionNumber){
+            var dx=x-px;
+            var dy=y-py;
+            var px2=px+Math.cos(theta)*dx-Math.sin(theta)*dy;
+            var py2=py+Math.sin(theta)*dx+Math.cos(theta)*dy;
+            var points = [
+                            [Math.floor(px2),Math.floor(py2)],
+                            [Math.floor(px2),Math.ceil(py2)],
+                            [Math.ceil(px2),Math.ceil(py2)],
+                            [Math.ceil(px2),Math.floor(py2)]
+                            ];
+            for (var j=0;j<points.length;j++){
+              var point2=points[j];
+              var px3=point2[0];
+              var py3=point2[1];
+              if (px3>=0&&py3>=0&&px3<width&&py3<height){
+                var index3=px3+width*py3;
+                leftCanvas[index3]=targetCol;
+              }
+            }
+           /* var linePoints = line(x,y,Math.round(px2),Math.round(py2));
+            for (var j=0;j<linePoints.length;j++){
+              var lp=linePoints[j];
+              var lpx=lp[0];
+              var lpy=lp[1];
+              var index3 = lpx+width*lpy;
+              if (canvas[index3]===0||canvas[index3]===magnetAuraCol){
+                canvas[index3]=exitCol;
+              }
+            }*/
+          }
+/*
+          if (canvas[i]===0){
+            canvas[x+width*y]=magnetAuraCol;
+          }*/
+        }
+      }
+
+  /*
+      for (var x=Math.floor(px-rad);x<=Math.ceil(px+rad);x++){      
+        for (var y=Math.floor(py-rad);y<=Math.ceil(py+rad);y++){
+          if (x>=0&&y>=0&&x<width&&y<height){
+            var dx=x-px;
+            var dy=y-py;
+            if (dx*dx+dy*dy<=rad*rad){
+              var i = x+width*y;
+              if (canvas[i]===0){
+                canvas[x+width*y]=bumperAuraCol;
+              }
+            }
+          }
+        }
+      }*/
+    }
+    canvasIndex=1;
+  }
+
+  function calcHalo(){
+    for (var x=1;x<width-1;x++){
+      for (var y=1;y<height-1;y++){
+        var val = canvas[x+width*y];
+        if (val===0 || val===magnetAuraCol || val===bumperAuraCol) {
+          var neighbours = [
+            [x-1,y-1],[x,y-1],[x+1,y-1],
+            [x-1,y],      [x+1,y],
+            [x-1,y+1],[x,y+1],[x+1,y+1]];
+          canvas[x+width*y]=0;
+          for (var i=0;i<neighbours.length;i++){
+            var n = neighbours[i];
+            var nx = n[0];
+            var ny = n[1];
+            var v = canvas[nx+width*ny];
+            if (v===bumperCol){
+              canvas[x+width*y]=bumperAuraCol;
+              break;
+            } else if (v===magnetCol){
+              canvas[x+width*y]=magnetAuraCol; 
+              break;             
+            }
+          }
+        }
+      }
+    }
   }
 
   function drawCircle(canvas,x,y,radius,colorIndex){  
@@ -903,7 +1481,7 @@ body {
     /*]]>*/
     </style>
     <title>
-      flipgame
+      pinballl
     </title>
   </head>
   <body onload="init();" ondragstart="return false;" ondrop="return false;">
@@ -938,47 +1516,7 @@ body {
                       <table border=1>
                         <tr>
                           <td>
-                            <div class="unselected" id="color_1">  </span>
-                          </td>
-                          <td>
-                            paddle body
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <div class="unselected" id="color_2">  </span>
-                          </td>
-                          <td>
-                            paddle pivot L
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <div class="unselected" id="color_3">  </span>
-                          </td>
-                          <td>
-                            paddle pivot R
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <div class="unselected" id="color_4">  </span>
-                          </td>
-                          <td>
-                            wall
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <div class="unselected" id="color_5">  </span>
-                          </td>
-                          <td>
-                            bumper
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <div class="unselected" id="color_6">  </span>
+                            <a href="#" onclick="selectTool('eraser',1);return false;"><div class="unselected" id="color_1"></div>  
                           </td>
                           <td>
                             eraser
@@ -986,15 +1524,47 @@ body {
                         </tr>
                         <tr>
                           <td>
-                            <div class="unselected" id="color_7">  </span>
+                            <a href="#" onclick="selectTool('wall',2);return false;"><div class="unselected" id="color_2"></div>  
                           </td>
                           <td>
-                            magnet
+                            wall
                           </td>
                         </tr>
                         <tr>
                           <td>
-                            <div class="unselected" id="color_8">  </span>
+                            <a href="#" onclick="selectTool('bumper',3);return false;"><div class="unselected" id="color_3"></div>
+                          </td>
+                          <td>
+                            bumper
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('flipper',4);return false;"><div class="unselected" id="color_4"></div>
+                          </td>
+                          <td>
+                            flipper
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('leftFlipperPivot',5);return false;"><div class="unselected" id="color_5"></div>
+                          </td>
+                          <td>
+                            left flipper pivot
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('rightFlipperPivot',6);return false;"><div class="unselected" id="color_6"></div>
+                          </td>
+                          <td>
+                            right flipper pivot
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('ballSpawn',7);return false;"><div class="unselected" id="color_7"></div>
                           </td>
                           <td>
                             ball spawn
@@ -1002,10 +1572,58 @@ body {
                         </tr>
                         <tr>
                           <td>
-                            <div class="unselected" id="color_9">  </span>
+                            <a href="#" onclick="selectTool('magnet',8);return false;"><div class="unselected" id="color_8"></div>
+                          </td>
+                          <td>
+                            magnet
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('connection',9);return false;"><div class="unselected" id="color_9"></div>
+                          </td>
+                          <td>
+                            connection
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('target',10);return false;"><div class="unselected" id="color_10"></div>
+                          </td>
+                          <td>
+                            target
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('toggableWall',11);return false;"><div class="unselected" id="color_11"></div>
+                          </td>
+                          <td>
+                            toggleable wall
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('spring',12);return false;"><div class="unselected" id="color_12"></div>
                           </td>
                           <td>
                             spring
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('exitPoint',13);return false;"><div class="unselected" id="color_13"></div>
+                          </td>
+                          <td>
+                            exit point
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="clearPalette();return false;" style=" text-decoration: none;"><div class="unselected" style="text-align:center;">X</div>
+                          </td>
+                          <td>
+                            clear canvas
                           </td>
                         </tr>
                       </table>                      
