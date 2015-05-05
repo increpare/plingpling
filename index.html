@@ -10,11 +10,15 @@
   var canvasses = new Array();
   var hyperlinks = new Array();
 
-
   var width=125;
   var height=140;
   var zoomFactor=4;
   var radius=5;
+
+//1 for down, 2 for up
+  var leftSweepArea = new Uint8Array(width*height);
+  var rightSweepArea = new Uint8Array(width*height);
+  var springSweepArea = new Uint8Array(width*height);
 
   var visibleCanvas;
   var visibleContext;
@@ -30,9 +34,9 @@
   //canvas id 1 = empty space
   //canvas id 2 = regular wall
   var regionCanvas = new Uint32Array(width*height);
-  var pivotPoints = {};
+  var pivotPoints = [];
   var boundingBoxes = {};
-
+  var regionTypes = [];
 
 /*
 //arne
@@ -97,6 +101,7 @@ var togglableWallDisabledCol=17;
 var exitCol=13;
 var springCol=12;
 
+var lastPlacedLeftPivot=false;
 /*
 //spectrum 
   var colorPalette = [
@@ -310,12 +315,39 @@ function stringToState(str){
 }
 
 document.addEventListener("keydown", press);
+document.addEventListener("keyup", keyup);
 
 var copyImage = null;
 
 var savedString;
+
+var keyBuffer=[];
+
+function setFlipperCanvas(){  
+  canvasIndex=0;
+  if (keyBuffer[37]===true){//left
+    canvasIndex=1;
+  } 
+  if (keyBuffer[39]===true){
+    canvasIndex+=2;
+  }
+  if (keyBuffer[40]===true){
+    canvasIndex+=4;
+  }
+  //38 is up
+  //40 is down
+  setVisuals();
+}
+
+function keyup(evt){
+  evt = evt || window.event;
+  keyBuffer[evt.keyCode]=false;
+  setFlipperCanvas();
+}
+
 function press(evt){
   evt = evt || window.event;
+  keyBuffer[evt.keyCode]=true;
   /*
   if (evt.keyCode==83){//S(ave)
     savedString = stateToString();
@@ -324,7 +356,9 @@ function press(evt){
     setVisuals();
     setLayer(canvasIndex+1); 
   } */
-  if (evt.keyCode===67) { //c
+  if (evt.keyCode===83){//s
+    spawnBall();
+  } else if (evt.keyCode===67) { //c
     floodFills();
 
     //copyImage=JSON.stringify(canvasses[canvasIndex])
@@ -380,6 +414,8 @@ function press(evt){
       setVisuals();
     }
   }
+
+  setFlipperCanvas();
 }
   function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min)) + min;
@@ -420,13 +456,238 @@ function clearPalette(){
 
 var colorElem = new Array();
 
+var ballSpawnPointX=width/2;
+var ballSpawnPointY=height/2;
+
+var bpx=-20;
+var bpy=-20;
+var ballFrame=0;
+var ballPointFrames = [
+[
+      [1,0],[2,0],
+[0,1],[1,1],      [3,1],
+[0,2],            [3,2],
+      [1,3],[2,3]
+],
+[
+      [1,0],[2,0],
+[0,1],      [2,1],[3,1],
+[0,2],            [3,2],
+      [1,3],[2,3]
+],
+[
+      [1,0],[2,0],
+[0,1],            [3,1],
+[0,2],      [2,2],[3,2],
+      [1,3],[2,3]
+],
+[
+      [1,0],[2,0],
+[0,1],            [3,1],
+[0,2],[1,2],      [3,2],
+      [1,3],[2,3]
+]
+];
+
+  function collision(x,y){
+    var indices = [
+                                x+1+width*(y+0),x+2+width*(y+0),
+                    x+0+width*(y+1),x+1+width*(y+1),x+2+width*(y+1),x+3+width*(y+1),
+                    x+0+width*(y+2),x+1+width*(y+2),x+2+width*(y+2),x+3+width*(y+2),
+                                x+1+width*(y+3),x+2+width*(y+3)
+                    ];
+    var canvas=canvasses[canvasIndex];
+
+    var collisiondat = [];
+    for (var i=0;i<indices.length;i++){
+      var index = indices[i];
+      var val = canvas[index];
+      if (
+            val>0 &&
+            val!==bumperAuraCol &&
+            val!==magnetAuraCol && 
+            val!==ballSpawnCol &&
+            val!==exitCol &&
+            val!==connectionCol){
+        var px = (index%width)+0.5;
+        var py = Math.floor(index/width)+0.5;
+        var dx = px-x-2;
+        var dy = py-y-2;
+        collisiondat.push([val,-dx,-dy]);
+      }
+    }
+    return collisiondat;
+  }
   function dropDownSelect(dropdown,val) {
     hyperlinks[canvasIndex][dropdown-1]=val;
   }
 
+  function dot(v1,v2){
+    return v1[0]*v2[0]+v1[1]*v2[1];
+  }
 
+  function mag (v){
+    return Math.sqrt(v[0]*v[0]+v[1]*v[1]);
+  }
+
+  function normalized(v){
+    var m = mag(v);
+    return [v[0]/m,v[1]/m];
+  }
+
+  function addV(v1,v2){
+    return [v1[0]+v2[0],v1[1]+v2[1]];
+  }
+
+  function subV(v1,v2){
+    return [v1[0]-v2[0],v1[1]-v2[1]];
+  }
+
+  function mulV(s,v){
+    return [s*v[0],s*v[1]];
+  }
+
+  var speedX=0;
+  var speedY=1;
+  var ballSpin=1;
+  var tickRecalcs=0;
+  var tickLength=33;
+  var bounceDamp=0.8;
+  var bumperSpeed=2.0;
+  var maxSpeed=3.0;
+  var maxBallSpin=4.0;
+  var spinDamp=0.0002;
+  function clampSpeed(){    
+    var v=  [speedX,speedY];
+    var speedMag = mag(v);
+    if (speedMag>maxSpeed){
+      speedN = normalized(v);
+      v = mulV(maxSpeed,speedN);
+      speedX=v[0];
+      speedY=v[1];
+    }
+    if (Math.abs(ballSpin)>maxBallSpin){
+      ballSpin=ballSpin/Math.abs(ballSpin)*maxBallSpin;
+    }
+  }
+  var ballSpinSpeed=0.4;
+  function tick(){
+    var signum=ballSpin>0?1:-1;
+    ballFrame=(((ballFrame+signum*Math.sqrt(Math.abs(ballSpin))*ballSpinSpeed)%4)+4)%4;
+
+    var oldSpeedX=speedX;
+    var oldSpeedY=speedY;
+
+    if (bpx<-10){
+      return;
+    }
+    var G=0.001;
+    speedY+=G*tickLength;
+    clampSpeed();
+    var nx = bpx+speedX;
+    var ny = bpy+speedY;
+    var collisiondat = collision(Math.round(nx),Math.round(ny));
+    if (collisiondat.length===0){
+      bpx=nx;
+      bpy=ny;
+      if (isNaN(bpx)||isNaN(bpy)){
+        console.log("eek nan");
+      }
+      tickRecalcs=0;
+      ballSpin*=(1-spinDamp*tickLength);
+    } else {
+      var avgx=0;
+      var avgy=0;
+      var bumperCount=0;
+      for (var i=0;i<collisiondat.length;i++){
+        if (collisiondat[i][0]===bumperCol){
+          bumperCount++;
+        }
+        avgx+=collisiondat[i][1];
+        avgy+=collisiondat[i][2];
+      }
+
+      avgx/=collisiondat.length;
+      avgy/=collisiondat.length;
+
+      if (avgx===0&&avgy===0){
+        //try go backwards
+        if (speedX!==0||speedY!==0){
+          avgx=-speedY;
+          avgy=speedX;
+        } else {
+          console.log(yep);                
+          return;
+        }  
+      }
+
+      var normal = normalized([avgx,avgy]);
+      var nSpeed = [-speedX,-speedY];
+
+      if (bumperCount>0){
+        var speedMag=mag(nSpeed);
+        speedMag+=bumperSpeed;
+        if (speedMag>maxSpeed){
+          speedMag=maxSpeed;
+        }
+        nSpeed = mulV(speedMag,normalized(nSpeed));
+        speedX=nSpeed[0];
+        speedY=nSpeed[1];
+        clampSpeed();
+      }
+
+      var direction = (nSpeed[0]*normal[1]-nSpeed[1]*normal[0]);
+/*      if (direction<0){
+        console.log("left");
+      } else if (direction>0){
+        console.log("right");
+      } else {
+        console.log("bang");
+      }*/
+      var refl = subV(mulV(2*dot(normal,nSpeed),normal),nSpeed);
+      //add 50% of spin to the bounce
+      speedX=bounceDamp*refl[0];
+      speedY=bounceDamp*refl[1];
+      
+      leftV = [-normal[1],normal[0]];
+      var ballSpinAmount=1.0;
+      speedX+=ballSpinAmount*ballSpin*leftV[0]/2;
+      speedY+=ballSpinAmount*ballSpin*leftV[1]/2;
+
+      ballSpin/=2;      
+      ballSpin+=direction*mag([speedX,speedY])*(1-bounceDamp)/2.0;
+      
+      clampSpeed();
+      nx = bpx+speedX;
+      ny = bpy+speedY;
+
+
+      tickRecalcs++;
+
+      var collisiondat = collision(Math.round(nx),Math.round(ny));
+      if (collisiondat.length===0){
+        bpx=nx;
+        bpy=ny;
+      if (isNaN(bpx)||isNaN(bpy)){
+        console.log("eek nan");
+      }
+        tickRecalcs=0;
+      } else {
+        if (tickRecalcs<4){
+          tick();
+        } else {
+          bpx=nx;
+          bpy=ny;
+        }
+        return;
+
+      }
+    }
+    setVisuals();
+  }
 
     function init() {
+      setInterval(tick, tickLength);
 
       titleInput=document.getElementById("titleInput");
       titleInput.value=gameTitle;
@@ -564,6 +825,10 @@ var colorElem = new Array();
   }
 
 
+  var lastbpx;
+  var lastbpy;
+  var lastBallFrame=ballFrame;
+
     function setVisuals(){
       //visibleContext.drawImage(canvasses[canvasIndex], 0, 0); 
       //visibleContext.drawImage(canvasses[canvasIndex], 0, 0,width*zoomFactor,height*zoomFactor); 
@@ -575,8 +840,31 @@ var colorElem = new Array();
           visibleContext.fillRect(i*zoomFactor,j*zoomFactor,zoomFactor,zoomFactor);        
         }
       }
+
+
+      if (mag([speedX,speedY])>2) {
+        var ballPoints=ballPointFrames[Math.floor(lastBallFrame)];
+        visibleContext.fillStyle="#888888";
+        for (var i=0;i<ballPoints.length;i++){
+          var bp = ballPoints[i];
+          var pi=Math.round(lastbpx+bp[0]);
+          var pj=Math.round(lastbpy+bp[1]);
+          visibleContext.fillRect(pi*zoomFactor,pj*zoomFactor,zoomFactor,zoomFactor);
+        }
+      }
+      var ballPoints=ballPointFrames[Math.floor(ballFrame)];
+      visibleContext.fillStyle="#ffffff";
+      for (var i=0;i<ballPoints.length;i++){
+        var bp = ballPoints[i];
+        var pi=Math.round(bpx+bp[0]);
+        var pj=Math.round(bpy+bp[1]);
+        visibleContext.fillRect(pi*zoomFactor,pj*zoomFactor,zoomFactor,zoomFactor);
+      }
+      lastbpy=bpy;
+      lastbpx=bpx;
       titleInput.value=gameTitle;
       linkInput.value=gameLink;
+      lastBallFrame=Math.floor(ballFrame);
     }
 
 
@@ -715,11 +1003,15 @@ function eraserDraw(x,y){
 }
 
 function wallDraw(x,y){
-  var px=x;
-  var py=y;
-  if (px>=0&&px<width&&py>=0&&py<height){
-    canvas[px+width*py]=wallCol;
-  }
+  var points = [[x,y],[x-1,y],[x,y+1],[x+1,y],[x,y-1]];
+
+  for (var i=0;i<points.length;i++){
+    var px=points[i][0];
+    var py=points[i][1];
+    if (px>=0&&px<width&&py>=0&&py<height){
+      canvas[px+width*py]=wallCol;
+    }
+  }   
 }
 
 function bumperDraw(x,y){
@@ -776,7 +1068,12 @@ function flipperDraw(x,y){
     }
   }
   if (foundflipper===false){
-    canvas[x+width*y]=leftFlipperPivotCol;
+    if (lastPlacedLeftPivot===false){
+      canvas[x+width*y]=leftFlipperPivotCol;
+    } else {
+      canvas[x+width*y]=rightFlipperPivotCol;      
+    }
+    lastPlacedLeftPivot=!lastPlacedLeftPivot;
   }
 
   for (var i=0;i<width*height;i++){
@@ -909,11 +1206,15 @@ function magnetDraw(x,y){
 }
 
 function connectionDraw(x,y){
-  var px=x;
-  var py=y;
-  if (px>=0&&px<width&&py>=0&&py<height){
-    canvas[px+width*py]=connectionCol;
-  }
+  var points = [[x,y],[x-1,y],[x,y-1],[x-1,y-1]];
+
+  for (var i=0;i<points.length;i++){
+    var px=points[i][0];
+    var py=points[i][1];
+    if (px>=0&&px<width&&py>=0&&py<height){
+      canvas[px+width*py]=connectionCol;
+    }
+  }   
 }
 
 function targetDraw(x,y){
@@ -942,11 +1243,15 @@ function toggableWallDraw(x,y){
 }
 
 function springDraw(x,y){
-  var px=x;
-  var py=y;
-  if (px>=0&&px<width&&py>=0&&py<height){
-    canvas[px+width*py]=springCol;
-  }
+  var points = [[x,y],[x-1,y],[x,y+1],[x+1,y],[x,y-1]];
+
+  for (var i=0;i<points.length;i++){
+    var px=points[i][0];
+    var py=points[i][1];
+    if (px>=0&&px<width&&py>=0&&py<height){
+      canvas[px+width*py]=springCol;
+    }
+  }   
 }
 
 function exitPointDraw(x,y){
@@ -980,6 +1285,7 @@ function exitPointDraw(x,y){
     canvas[p[0]+width*p[1]]=exitCol;
   }
 }
+
 
   var interpolateBrush = {
     eraser: true,
@@ -1056,10 +1362,17 @@ function exitPointDraw(x,y){
 
   function floodFills(){
     boundingBoxes = {};
+    pivotPoints = {};
 
     for (var i=0;i<width*height;i++){
       regionCanvas[i]=0;
     }
+
+    regionTypes=[];
+
+    var ballSpawnPointCount=0;
+    ballSpawnPointX=0;
+    ballSpawnPointY=0;
 
     regionCanvasCount = 2;
     for (var x=0;x<width;x++){
@@ -1075,12 +1388,35 @@ function exitPointDraw(x,y){
             regionCanvasCount++;
           }
         }
+        if (canvas[x+width*y]===ballSpawnCol){
+          ballSpawnPointX+=x;
+          ballSpawnPointY+=y;
+          ballSpawnPointCount++;
+        }
       }
     }
-    console.log(regionCanvasCount);
+
+    if (ballSpawnPointCount>0){
+      ballSpawnPointX/=ballSpawnPointCount;
+      ballSpawnPointY/=ballSpawnPointCount;
+      ballSpawnPointX-=2;
+      ballSpawnPointY-=2;
+    } else {
+      ballSpawnPointX=width/2;
+      ballSpawnPointY=height/2;
+    }
 
     drawBB();
+    scrunchSprings();
     setVisuals();
+  }
+
+  function spawnBall(){
+    bpx=ballSpawnPointX;
+    bpy=ballSpawnPointY;
+    ballSpin=maxBallSpin;
+    speedX=0;
+    speedY=0;
   }
 
   function fillRegion(x,y,regionNumber){
@@ -1091,6 +1427,7 @@ function exitPointDraw(x,y){
       originCol===flipperCol;
     regionCoordIndex=x+width*y;
     regionCanvas[regionCoordIndex]=regionNumber;
+    regionTypes[regionNumber]=canvas[regionCoordIndex];
 
     if ((regionNumber) in boundingBoxes){
       bbox = boundingBoxes[regionNumber];
@@ -1142,6 +1479,53 @@ function exitPointDraw(x,y){
     }
   }
 
+  function scrunchSprings(){
+    var downNoneCanvas=uint8ar_copy(canvasses[0]);
+    var downLeftCanvas=uint8ar_copy(canvasses[1]);
+    var downRightCanvas=uint8ar_copy(canvasses[2]);
+    var downBothCanvas=uint8ar_copy(canvasses[3]);
+    canvasses[4]=downNoneCanvas;
+    canvasses[5]=downLeftCanvas;
+    canvasses[6]=downRightCanvas;
+    canvasses[7]=downBothCanvas;
+
+
+    //remove springs
+    for (var i=0;i<regionCanvas.length;i++){
+      var regionNumber = regionCanvas[i];
+      if (regionTypes[regionNumber]===springCol){
+        downNoneCanvas[i]=0;
+        downLeftCanvas[i]=0;
+        downRightCanvas[i]=0;
+        downBothCanvas[i]=0;
+      }
+    }
+
+    //redraw them at half height
+
+    for (var regionNumberStr in boundingBoxes){
+      var regionNumber=Number(regionNumberStr);
+      if (regionTypes[regionNumber] !== springCol){
+        continue;
+      }
+      var bbox = boundingBoxes[regionNumber];
+      bottomy=bbox[3];
+      for (var x=bbox[0];x<=bbox[2];x++){      
+        for (var y=bbox[1];y<=bbox[3];y++){
+          var i = x+width*y;
+          if (regionCanvas[i]===regionNumber){
+            var newy = (y-bottomy)/2+bottomy;
+            newy=Math.round(newy);
+            downNoneCanvas[x+width*newy]=springCol;
+            downLeftCanvas[x+width*newy]=springCol;
+            downRightCanvas[x+width*newy]=springCol;
+            downBothCanvas[x+width*newy]=springCol;
+          }
+        }
+      }
+    }
+  }
+
   function drawBB(){
     canvasses[0]=canvas;
     var leftCanvas=uint8ar_copy(canvas);
@@ -1150,6 +1534,7 @@ function exitPointDraw(x,y){
     canvasses[1]=leftCanvas;
     canvasses[2]=rightCanvas;
     canvasses[3]=bothCanvas;
+
     for (var i=0;i<regionCanvas.length;i++){
       var regionNumber = regionCanvas[i];
       if (regionNumber in pivotPoints){
@@ -1175,36 +1560,26 @@ function exitPointDraw(x,y){
       }
     }*/
 
-    for (var regionNumber in pivotPoints){
-
+    for (var regionNumberStr in pivotPoints){
+      var regionNumber=Number(regionNumberStr);
       var ppoint = pivotPoints[regionNumber];
       var bbox = boundingBoxes[regionNumber];
       var orientation=ppoint[2];
-      if (orientation===2){
-        continue;
+      var targetCanvas;
+      var targetAngle=30.0;
+      var targetPivotCol;
+      if (orientation===1){
+        targetAngle=-targetAngle;
+        targetCanvas=leftCanvas;
+        targetPivotCol=leftFlipperPivotCol;
+      } else {
+        targetCanvas=rightCanvas;
+        targetPivotCol=rightFlipperPivotCol;
       }
 
-      var bboxCorners = [
-        [bbox[0],bbox[1]],
-        [bbox[2],bbox[1]],
-        [bbox[2],bbox[3]],
-        [bbox[0],bbox[3]]];
-      var maxDistSq=0;
-      for (var i=0;i<3;i++){  
-        var p = bboxCorners[i];
-        var dx = p[0]-ppoint[0];
-        var dy = p[1]-ppoint[1];
-        var dist =dx*dx+dy*dy;
-        if (dist>maxDistSq){
-          maxDistSq=dist;        
-        }
-      }
-      var rad=Math.sqrt(maxDistSq);
       var px=ppoint[0];
       var py=ppoint[1];
-
-      theta=Math.PI*(-30)/180.0;
-      //draw bounding box
+      theta=Math.PI*targetAngle/180.0;
       for (var x=bbox[0];x<=bbox[2];x++){      
         for (var y=bbox[1];y<=bbox[3];y++){
           var i = x+width*y;
@@ -1225,7 +1600,8 @@ function exitPointDraw(x,y){
               var py3=point2[1];
               if (px3>=0&&py3>=0&&px3<width&&py3<height){
                 var index3=px3+width*py3;
-                leftCanvas[index3]=targetCol;
+                targetCanvas[index3]=flipperCol;
+                bothCanvas[index3]=flipperCol;
               }
             }
            /* var linePoints = line(x,y,Math.round(px2),Math.round(py2));
@@ -1239,30 +1615,14 @@ function exitPointDraw(x,y){
               }
             }*/
           }
-/*
-          if (canvas[i]===0){
-            canvas[x+width*y]=magnetAuraCol;
-          }*/
         }
       }
 
-  /*
-      for (var x=Math.floor(px-rad);x<=Math.ceil(px+rad);x++){      
-        for (var y=Math.floor(py-rad);y<=Math.ceil(py+rad);y++){
-          if (x>=0&&y>=0&&x<width&&y<height){
-            var dx=x-px;
-            var dy=y-py;
-            if (dx*dx+dy*dy<=rad*rad){
-              var i = x+width*y;
-              if (canvas[i]===0){
-                canvas[x+width*y]=bumperAuraCol;
-              }
-            }
-          }
-        }
-      }*/
+      bothCanvas[px+width*py]=targetPivotCol;
+      targetCanvas[px+width*py]=targetPivotCol;
+
     }
-    canvasIndex=1;
+    canvasIndex=3;
   }
 
   function calcHalo(){
@@ -1352,16 +1712,16 @@ function exitPointDraw(x,y){
         borderPoints = [[p[0]+1,p[1]],[p[0]-1,p[1]],[p[0],p[1]+1],[p[0],p[1]-1]];
         for (var j=0;j<borderPoints.length;j++){
           var borderPoint=borderPoints[j]; 
-          var bpx=borderPoint[0];
-          var bpy=borderPoint[1];
+          var borderpx=borderPoint[0];
+          var borderpy=borderPoint[1];
           var bpi=bpx+width*bpy;
           if (
-            bpx>=0 &&
-            bpx<width &&
-            bpy>=0 &&
-            bpy<height &&
+            borderpx>=0 &&
+            borderpx<width &&
+            borderpy>=0 &&
+            borderpy<height &&
             canvas[bpi]===originColor){
-            points.push([bpx,bpy]);
+            points.push([borderpx,borderpy]);
           }
         }
       }
