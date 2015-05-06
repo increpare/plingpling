@@ -9,17 +9,12 @@
   var winText="Congratulations! You won!"
   var canvasIndex=0;
   var canvasses = new Array();
-  var hyperlinks = new Array();
 
   var width=125;
   var height=140;
   var zoomFactor=4;
   var radius=5;
 
-//1 for down, 2 for up
-  var leftSweepArea = new Uint8Array(width*height);
-  var rightSweepArea = new Uint8Array(width*height);
-  var springSweepArea = new Uint8Array(width*height);
 
   var visibleCanvas;
   var visibleContext;
@@ -38,6 +33,17 @@
   var pivotPoints = [];
   var boundingBoxes = {};
   var regionTypes = [];
+
+  var leftSweepArea = new Uint32Array(width*height);
+  var rightSweepArea = new Uint32Array(width*height);
+  var bothSweepArea = new Uint32Array(width*height);
+  var downSweepArea = new Uint32Array(width*height);
+  
+  var leftSweepArea_inverse = new Uint32Array(width*height);
+  var rightSweepArea_inverse = new Uint32Array(width*height);
+  var bothSweepArea_inverse = new Uint32Array(width*height);
+  var downSweepArea_inverse = new Uint32Array(width*height);
+  
 
 /*
 //arne
@@ -287,7 +293,6 @@ function stateToString(){
     var pairs=RLE_encode(s);    
     state.canvasses.push(pairs);
   }
-  state.hyperlinks=hyperlinks;
   var result=JSON.stringify(state);
   return result;
 }
@@ -314,7 +319,6 @@ function stringToState(str){
     canvasses.push(ar);
   }
 
-  hyperlinks=state.hyperlinks;
 }
 
 document.addEventListener("keydown", press);
@@ -326,7 +330,53 @@ var savedString;
 
 var keyBuffer=[];
 
+
+function applyCanvasSweep(sweepArea){
+  var x = Math.round(bpx);
+  var y = Math.round(bpy);    
+  var points = [
+              [x-1,y+2],[x,y+2],[x+1,y+2],
+    [x-2,y+1],[x-1,y+1],[x,y+1],[x+1,y+1],[x+2,y+1],
+    [x-2,y  ],[x-1,y  ],[x,y  ],[x+1,y  ],[x+2,y  ],
+    [x-2,y-1],[x-1,y-1],[x,y-1],[x+1,y-1],[x+2,y-1],
+              [x-1,y-2],[x,y-2],[x+1,y-2]
+    ];
+    var maxDX=0;
+    var maxDY=0;
+  for (var i=0;i<points.length;i++){
+    var px=points[i][0];
+    var py=points[i][1];
+    if (px>=0&&px<width&&py>=0&&py<height){
+      var pointIndex=px+width*py;
+      var i2 = sweepArea[pointIndex];
+      if (i2!==0){
+        var tx = i2%(width);
+        var ty = Math.floor(i2/width);
+        var dx=tx-px;
+        var dy=ty-py;
+        if ( (dx*dx+dy*dy) > (maxDX*maxDX+maxDY*maxDY) ){
+          maxDX=dx;
+          maxDY=dy;
+        }
+      }
+    }
+  }
+  bpx+=maxDX;
+  bpy+=maxDY;
+  speedX+=maxDX;
+  speedY+=maxDY;
+  clampSpeed();
+}
+function setCanvasIndex(oldCanvasIndex,newCanvasIndex){
+  if (oldCanvasIndex===0&&newCanvasIndex===1){
+    applyCanvasSweep(leftSweepArea);
+  } else if (oldCanvasIndex===1&&newCanvasIndex===0){
+//    applyCanvasSweep(leftSweepArea_inverse);    
+  }
+}
+
 function setFlipperCanvas(){  
+  var oldCanvasIndex=canvasIndex;
   canvasIndex=0;
   if (keyBuffer[37]===true){//left
     canvasIndex=1;
@@ -337,9 +387,12 @@ function setFlipperCanvas(){
   if (keyBuffer[40]===true){
     canvasIndex+=4;
   }
-  //38 is up
-  //40 is down
-  setVisuals();
+  if (oldCanvasIndex!=canvasIndex){
+    setCanvasIndex(oldCanvasIndex,canvasIndex);
+    //38 is up
+    //40 is down
+    setVisuals();
+  }
 }
 
 function keyup(evt){
@@ -521,9 +574,6 @@ var ballPointFrames = [
       }
     }
     return collisiondat;
-  }
-  function dropDownSelect(dropdown,val) {
-    hyperlinks[canvasIndex][dropdown-1]=val;
   }
 
   function dot(v1,v2){
@@ -736,9 +786,6 @@ var ballPointFrames = [
         canvasses[i]=new Uint8Array(width*height);
       }
 
-      for (var i=0;i<16;i++){
-        hyperlinks[i] = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
-      }
 
       visibleCanvas = document.getElementById("mainCanvas");
       visibleCanvas.addEventListener('mousedown', mouseDown,false);
@@ -1036,6 +1083,7 @@ function bumperDraw(x,y){
 function flipperDraw(x,y){
   var points = [[x,y],[x-1,y],[x,y+1],[x+1,y],[x,y-1]];
 
+  var foundflipper=false;
   for (var i=0;i<points.length;i++){
     var px=points[i][0];
     var py=points[i][1];
@@ -1043,14 +1091,16 @@ function flipperDraw(x,y){
       val = canvas[px+width*py];
       if (val!==leftFlipperPivotCol&&val!==rightFlipperPivotCol){
         canvas[px+width*py]=flipperCol;
-      }
+        }
     }
   }   
 
 
-  neighbours=[[px+1,py],[px,py+1],[px-1,py],[px,py-1]];
-  fillCanvas[px+width*py]=1;
-  var foundflipper=false;
+  neighbours=[[x+1,y],[x,y+1],[x-1,y],[x,y-1]];
+  fillCanvas[x+width*y]=1;
+  if (canvas[x+width*y]===leftFlipperPivotCol||canvas[x+width*y]===rightFlipperPivotCol){
+    foundflipper=true;
+  }
   for(var i=0;i<neighbours.length;i++){
     var n = neighbours[i];
     var nx=n[0];
@@ -1402,13 +1452,14 @@ function exitPointDraw(x,y){
 
     drawBB();
     scrunchSprings();
+    generateSweepOffsets();
     setVisuals();
   }
 
   function spawnBall(){
     bpx=ballSpawnPointX;
     bpy=ballSpawnPointY;
-    ballSpin=maxBallSpin;
+    ballSpin=0;
     speedX=0;
     speedY=0;
   }
@@ -1419,6 +1470,13 @@ function exitPointDraw(x,y){
       originCol===leftFlipperPivotCol ||
       originCol===rightFlipperPivotCol ||
       originCol===flipperCol;
+
+    if (originCol===leftFlipperPivotCol){
+     pivotPoints[regionNumber]=[x,y,1];
+    } else if (originCol===rightFlipperPivotCol){
+     pivotPoints[regionNumber]=[x,y,2];
+    } 
+
     regionCoordIndex=x+width*y;
     regionCanvas[regionCoordIndex]=regionNumber;
     regionTypes[regionNumber]=canvas[regionCoordIndex];
@@ -1514,6 +1572,86 @@ function exitPointDraw(x,y){
             downLeftCanvas[x+width*newy]=springCol;
             downRightCanvas[x+width*newy]=springCol;
             downBothCanvas[x+width*newy]=springCol;
+          }
+        }
+      }
+    }
+  }
+  
+
+  function generateSweepOffsets() {
+    //only need to do this in editor
+    for (var i=0;i<width*height;i++){
+      leftSweepArea[i]=0;
+      rightSweepArea[i]=0;
+      bothSweepArea[i]=0;
+      downSweepArea[i]=0;
+
+      leftSweepArea_inverse[i]=0;
+      rightSweepArea_inverse[i]=0;
+      bothSweepArea_inverse[i]=0;
+      downSweepArea_inverse[i]=0;
+    }
+
+    //step 1 - generate for just going to flip left from resting
+
+    for (var regionNumberStr in pivotPoints){
+      var regionNumber=Number(regionNumberStr);
+      var ppoint = pivotPoints[regionNumber];
+      var bbox = boundingBoxes[regionNumber];
+      var orientation=ppoint[2];
+      var targetCanvas;
+      var targetAngle=30.0;
+      var targetPivotCol;
+
+      if (orientation===1){
+        targetAngle=-targetAngle;
+      } else if (orientation===2){
+        continue;
+      }
+
+      var sourceCanvas = canvasses[0];
+      var targetCanvas = canvasses[1];
+
+      var px=ppoint[0];
+      var py=ppoint[1];
+      theta=Math.PI*targetAngle/180.0;
+      for (var x=bbox[0];x<=bbox[2];x++){      
+        for (var y=bbox[1];y<=bbox[3];y++){
+          var i = x+width*y;
+          if (regionCanvas[i]===regionNumber){
+            var dx=x-px;
+            var dy=y-py;
+            var targetx=Math.round(px+Math.cos(theta)*dx-Math.sin(theta)*dy);
+            var targety=Math.round(py+Math.sin(theta)*dx+Math.cos(theta)*dy);
+
+            var diff=-1;
+            if (dy>0){
+              diff=1;
+            }
+
+            //forward sweep
+            var targetindex = targetx+width*targety;
+            while (targetindex>0&&targetindex<width*height){
+              var targetVal = targetCanvas[targetindex];
+              if (targetVal<=eraserCol||targetVal===bumperAuraCol){
+                break;
+              }
+              targetindex+=diff*width;
+              targety+=diff;
+            }
+
+
+
+            var linePoints = line(x,y,Math.round(targetx),Math.round(targety));
+            for (var j=0;j<linePoints.length;j++){
+              var lp=linePoints[j];
+              var lpx=lp[0];
+              var lpy=lp[1];              
+              var index3 = lpx+width*lpy;
+              leftSweepArea[index3]=targetindex;
+            }
+
           }
         }
       }
@@ -1750,7 +1888,7 @@ body {
                  text-align: center;
                  font-size: 100%;
                  }
-                 input#endMessageInput {
+                 input#winText {
                   width:90%;
                  }
                  li {
