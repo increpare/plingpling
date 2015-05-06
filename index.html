@@ -36,7 +36,12 @@
 
   var leftSweepArea = new Uint32Array(width*height);
   var rightSweepArea = new Uint32Array(width*height);
-  var bothSweepArea = new Uint32Array(width*height);
+
+  var down_then_leftSweepArea = new Uint32Array(width*height);
+  var down_then_rightSweepArea = new Uint32Array(width*height);
+
+  var right_then_leftSweepArea = new Uint32Array(width*height);
+  var left_then_rightSweepArea = new Uint32Array(width*height);
   var downSweepArea = new Uint32Array(width*height);
   
   var leftSweepArea_inverse = new Uint32Array(width*height);
@@ -361,17 +366,89 @@ function applyCanvasSweep(sweepArea){
       }
     }
   }
+
+
+  if (maxDX!==0||maxDY!==0){
+    //need to flip velocity about dx,dy
+    var nSpeed = [-speedX,-speedY];
+    var normal = [maxDX,maxDY];
+    var refl = subV(mulV(2*dot(normal,nSpeed),normal),nSpeed);
+    speedX=refl[0];
+    speedY=refl[1];
+  }
+
   bpx+=maxDX;
   bpy+=maxDY;
   speedX+=maxDX;
   speedY+=maxDY;
   clampSpeed();
+
+  var xsign=0;
+  var ysign=0;
+  if (maxDX>0){
+    xsign=1;
+  } else if (maxDX<0){
+    xsign=-1;
+  }
+  if (maxDY>0){
+    ysign=1;
+  } else if (maxDY<0){
+    ysign=-1;
+  }
+  if(xsign===0&&ysign===0){
+    ysign=-1;
+  }
+
+  while(ballCollides()){
+    bpx+=xsign;
+    bpy+=ysign;
+  }
+
 }
+
+function interpolateAreas(oldCanvasIndex,newCanvasIndex){
+  var oldLeft = oldCanvasIndex%2;
+  var newLeft = newCanvasIndex%2;
+
+  var oldRight = (Math.floor(oldCanvasIndex/2))%2;
+  var newRight = (Math.floor(newCanvasIndex/2))%2;
+
+  var oldDown = (Math.floor(oldCanvasIndex/4))%2;
+  var newDown = (Math.floor(newCanvasIndex/4))%2;
+
+  var result = [oldCanvasIndex];
+  if (oldLeft!=newLeft){
+    var newItem = result[result.length-1]-oldLeft+newLeft;
+    result.push(newItem);
+  }
+  if (oldRight!=newRight){
+    var newItem = result[result.length-1]-oldRight*2+newRight*2;
+    result.push(newItem);
+  }
+  if (oldDown!=newDown){
+    var newItem = result[result.length-1]-oldDown*4+newDown*4;
+    result.push(newItem);
+  }
+  return result;
+}
+
 function setCanvasIndex(oldCanvasIndex,newCanvasIndex){
-  if (oldCanvasIndex===0&&newCanvasIndex===1){
-    applyCanvasSweep(leftSweepArea);
-  } else if (oldCanvasIndex===1&&newCanvasIndex===0){
-//    applyCanvasSweep(leftSweepArea_inverse);    
+  
+  var steps = interpolateAreas(oldCanvasIndex,newCanvasIndex);
+  for (var i=0;i<steps.length-1;i++){
+    var source = steps[i];
+    var target = steps[i+1];
+    
+    var sweepArea =  sweepAreas[source][target];
+
+    if (sweepArea==null){
+      console.log( "setCanvasIndex not found " + source+" -> " + target );
+      return;
+    } else {
+      console.log(source + " -> " + target);
+    }
+
+    applyCanvasSweep( sweepArea );
   }
 }
 
@@ -381,10 +458,10 @@ function setFlipperCanvas(){
   if (keyBuffer[37]===true){//left
     canvasIndex=1;
   } 
-  if (keyBuffer[39]===true){
+  if (keyBuffer[39]===true){//right
     canvasIndex+=2;
   }
-  if (keyBuffer[40]===true){
+  if (keyBuffer[40]===true){//down
     canvasIndex+=4;
   }
   if (oldCanvasIndex!=canvasIndex){
@@ -401,9 +478,23 @@ function keyup(evt){
   setFlipperCanvas();
 }
 
+function prevent(e) {
+    if (e.preventDefault) e.preventDefault();
+    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+    if (e.stopPropagation) e.stopPropagation();
+    e.returnValue=false;
+    return false;
+}
+
+
 function press(evt){
   evt = evt || window.event;
   keyBuffer[evt.keyCode]=true;
+
+  if ([32, 37, 38, 39, 40].indexOf(event.keyCode) > -1) {
+    prevent(event);
+  }
+
   /*
   if (evt.keyCode==83){//S(ave)
     savedString = stateToString();
@@ -546,6 +637,33 @@ var ballPointFrames = [
       [1,3],[2,3]
 ]
 ];
+
+
+function ballCollides(){
+  var x = Math.round(bpx);
+  var y = Math.round(bpy);
+  var indices = [
+                              x+1+width*(y+0),x+2+width*(y+0),
+                  x+0+width*(y+1),x+1+width*(y+1),x+2+width*(y+1),x+3+width*(y+1),
+                  x+0+width*(y+2),x+1+width*(y+2),x+2+width*(y+2),x+3+width*(y+2),
+                              x+1+width*(y+3),x+2+width*(y+3)
+                  ];
+  var canvas=canvasses[canvasIndex];
+
+  for (var i=0;i<indices.length;i++){
+    var index = indices[i];
+    var val = canvas[index];
+    if (
+          val>0 &&
+          val!==bumperAuraCol &&
+          val!==ballSpawnCol &&
+          val!==exitCol &&
+          val!==connectionCol){
+      return true;
+    }
+  }
+  return false;
+}
 
   function collision(x,y){
     var indices = [
@@ -1036,6 +1154,7 @@ var ballPointFrames = [
     // Return the result
     return coordinatesArray;
   }
+
 
 function eraserDraw(x,y){
   //var points = [[x,y],[x-1,y],[x,y+1],[x+1,y],[x,y-1]];
@@ -1561,7 +1680,7 @@ function exitPointDraw(x,y){
         continue;
       }
       var bbox = boundingBoxes[regionNumber];
-      bottomy=bbox[3];
+      var bottomy=bbox[3];
       for (var x=bbox[0];x<=bbox[2];x++){      
         for (var y=bbox[1];y<=bbox[3];y++){
           var i = x+width*y;
@@ -1578,57 +1697,34 @@ function exitPointDraw(x,y){
     }
   }
   
+  function generateSweepSprings(
+    sourceCanvasIndex,
+    targetCanvasIndex
+    ) {
 
-  function generateSweepOffsets() {
-    //only need to do this in editor
-    for (var i=0;i<width*height;i++){
-      leftSweepArea[i]=0;
-      rightSweepArea[i]=0;
-      bothSweepArea[i]=0;
-      downSweepArea[i]=0;
+    var sourceCanvas=canvasses[sourceCanvasIndex];
+    var targetCanvas= canvasses[targetCanvasIndex];
+    var targetSweepArea = sweepAreas[sourceCanvasIndex][targetCanvasIndex];
+    var targetSweepAreaInverse = sweepAreas[targetCanvasIndex][sourceCanvasIndex];
 
-      leftSweepArea_inverse[i]=0;
-      rightSweepArea_inverse[i]=0;
-      bothSweepArea_inverse[i]=0;
-      downSweepArea_inverse[i]=0;
-    }
-
-    //step 1 - generate for just going to flip left from resting
-
-    for (var regionNumberStr in pivotPoints){
+    for (var regionNumberStr in boundingBoxes){
       var regionNumber=Number(regionNumberStr);
-      var ppoint = pivotPoints[regionNumber];
-      var bbox = boundingBoxes[regionNumber];
-      var orientation=ppoint[2];
-      var targetCanvas;
-      var targetAngle=30.0;
-      var targetPivotCol;
-
-      if (orientation===1){
-        targetAngle=-targetAngle;
-      } else if (orientation===2){
+      if (regionTypes[regionNumber] !== springCol){
         continue;
       }
+      var bbox = boundingBoxes[regionNumber];
+      var bottomy=bbox[3];
+      var topy=bbox[1];
+      var bheight=bottomy-topy;
 
-      var sourceCanvas = canvasses[0];
-      var targetCanvas = canvasses[1];
-
-      var px=ppoint[0];
-      var py=ppoint[1];
-      theta=Math.PI*targetAngle/180.0;
       for (var x=bbox[0];x<=bbox[2];x++){      
-        for (var y=bbox[1];y<=bbox[3];y++){
+        for (var y=bbox[1];y<=bbox[3];y++){          
           var i = x+width*y;
           if (regionCanvas[i]===regionNumber){
-            var dx=x-px;
-            var dy=y-py;
-            var targetx=Math.round(px+Math.cos(theta)*dx-Math.sin(theta)*dy);
-            var targety=Math.round(py+Math.sin(theta)*dx+Math.cos(theta)*dy);
-
-            var diff=-1;
-            if (dy>0){
-              diff=1;
-            }
+            var altitude = bottomy-y;
+            var targetaltitutde=Math.round(altitude/2);
+            var targetx=x;
+            var targety=bottomy-targetaltitutde;
 
             //forward sweep
             var targetindex = targetx+width*targety;
@@ -1637,10 +1733,19 @@ function exitPointDraw(x,y){
               if (targetVal<=eraserCol||targetVal===bumperAuraCol){
                 break;
               }
-              targetindex+=diff*width;
-              targety+=diff;
+              targetindex+=width;
             }
 
+            var sourcex=x;
+            var sourcey=y;
+            var sourceindex = sourcex+width*sourcey;
+            while (sourceindex>0&&sourceindex<width*height){
+              var sourceVal = sourceCanvas[sourceindex];
+              if (sourceVal<=eraserCol||sourceVal===bumperAuraCol){
+                break;
+              }
+              sourceindex-=width;
+            }
 
 
             var linePoints = line(x,y,Math.round(targetx),Math.round(targety));
@@ -1649,13 +1754,177 @@ function exitPointDraw(x,y){
               var lpx=lp[0];
               var lpy=lp[1];              
               var index3 = lpx+width*lpy;
-              leftSweepArea[index3]=targetindex;
+              targetSweepArea[index3]=targetindex;
+              targetSweepAreaInverse[index3]=sourceindex;
             }
 
           }
         }
       }
     }
+  }
+
+  function generateSweepCanvasPair(
+                    sourceIndex,targetLeftIndex, targetRightIndex){
+    var sourceCanvas = canvasses[sourceIndex];
+    var leftTargetCanvas =                  targetLeftIndex>=0  ? canvasses[targetLeftIndex]                  : null;
+    var rightTargetCanvas =                 targetRightIndex>=0 ? canvasses[targetRightIndex]                 : null;
+    var leftTargetSweepCanvas =             targetLeftIndex>=0  ? sweepAreas[sourceIndex][targetLeftIndex]    : null; 
+    var rightTargetSweepCanvas =            targetRightIndex>=0 ? sweepAreas[sourceIndex][targetRightIndex]   : null;
+    var leftTargetInverseSweepCanvas =      targetLeftIndex>=0  ? sweepAreas[targetLeftIndex][sourceIndex]    : null; 
+    var rightTargetInverseSweepCanvas =     targetRightIndex>=0 ? sweepAreas[targetRightIndex][sourceIndex]   : null;
+
+  //step 1 - generate for just going to flip left/right from resting
+
+      for (var regionNumberStr in pivotPoints){
+        var regionNumber=Number(regionNumberStr);
+        var ppoint = pivotPoints[regionNumber];
+        var bbox = boundingBoxes[regionNumber];
+        var orientation=ppoint[2];
+        var targetCanvas;
+        var targetAngle=30.0;
+        var targetPivotCol;
+        var targetCanvas;
+        var targetSweepArea;
+        var targetSweepAreaInverse;
+        if (orientation===1){
+          targetAngle=-targetAngle;
+          targetCanvas=leftTargetCanvas;
+          targetSweepArea=leftTargetSweepCanvas;
+          targetSweepAreaInverse=leftTargetInverseSweepCanvas;
+        } else if (orientation===2){
+          targetAngle=targetAngle;
+          targetCanvas=rightTargetCanvas;
+          targetSweepArea=rightTargetSweepCanvas;
+          targetSweepAreaInverse=rightTargetInverseSweepCanvas;
+        }
+        if (targetCanvas===null){
+          continue;
+        }
+
+        var px=ppoint[0];
+        var py=ppoint[1];
+        theta=Math.PI*targetAngle/180.0;
+        for (var x=bbox[0];x<=bbox[2];x++){      
+          for (var y=bbox[1];y<=bbox[3];y++){
+            var i = x+width*y;
+            if (regionCanvas[i]===regionNumber){
+              var dx=x-px;
+              var dy=y-py;
+              var targetxExact=px+Math.cos(theta)*dx-Math.sin(theta)*dy
+              var targetyExact=py+Math.sin(theta)*dx+Math.cos(theta)*dy;
+              var targetx=Math.round(targetxExact);
+              var targety=Math.round(targetyExact);
+
+              var diff=-1;
+              
+              if (orientation===1){
+                if (targetxExact<px){
+                  diff=+1;
+                }
+              } else {
+                if (targetxExact>=px){
+                  diff=+1;
+                }
+              }
+
+              //forward sweep
+              var targetindex = targetx+width*targety;
+              while (targetindex>0&&targetindex<width*height){
+                var targetVal = targetCanvas[targetindex];
+                if (targetVal<=eraserCol||targetVal===bumperAuraCol){
+                  break;
+                }
+                targetindex+=diff*width;
+              }
+
+              var sourcex=x;
+              var sourcey=y;
+              var sourceindex = sourcex+width*sourcey;
+              while (sourceindex>0&&sourceindex<width*height){
+                var sourceVal = sourceCanvas[sourceindex];
+                if (sourceVal<=eraserCol||sourceVal===bumperAuraCol){
+                  break;
+                }
+                sourceindex-=diff*width;
+              }
+
+
+              var linePoints = line(x,y,Math.round(targetx),Math.round(targety));
+              for (var j=0;j<linePoints.length;j++){
+                var lp=linePoints[j];
+                var lpx=lp[0];
+                var lpy=lp[1];              
+                var index3 = lpx+width*lpy;
+                targetSweepArea[index3]=targetindex;
+                //canvasses[0][index3]=8;
+                targetSweepAreaInverse[index3]=sourceindex;
+              }
+
+            }
+          }
+        }
+      }
+
+  }
+
+  var NONE = 0;
+  var DOWN = 4;
+  var LEFT = 1;
+  var RIGHT = 2;
+  sweepAreas = [];
+  function generateSweepOffsets() {
+    for (var i=0;i<8;i++){
+      sweepAreas[i]=[];
+    }
+
+    sweepAreas[NONE][LEFT] = new Uint32Array(width*height);
+    sweepAreas[NONE][RIGHT] = new Uint32Array(width*height);
+    sweepAreas[LEFT][NONE] = new Uint32Array(width*height);
+    sweepAreas[RIGHT][NONE] = new Uint32Array(width*height);
+    generateSweepCanvasPair(NONE,LEFT,RIGHT);
+
+    sweepAreas[LEFT][LEFT+RIGHT] = new Uint32Array(width*height);
+    sweepAreas[LEFT+RIGHT][LEFT] = new Uint32Array(width*height);
+    generateSweepCanvasPair(LEFT,-1,LEFT+RIGHT);
+
+    sweepAreas[RIGHT][LEFT+RIGHT] = new Uint32Array(width*height);
+    sweepAreas[LEFT+RIGHT][RIGHT] = new Uint32Array(width*height);
+    generateSweepCanvasPair(RIGHT,LEFT+RIGHT,-1);
+
+    sweepAreas[DOWN+LEFT][DOWN+LEFT+RIGHT] = new Uint32Array(width*height);
+    sweepAreas[DOWN+LEFT+RIGHT][DOWN+LEFT] = new Uint32Array(width*height);
+    generateSweepCanvasPair(DOWN+LEFT,-1,DOWN+LEFT+RIGHT);
+
+    sweepAreas[DOWN+RIGHT][DOWN+LEFT+RIGHT] = new Uint32Array(width*height);
+    sweepAreas[DOWN+LEFT+RIGHT][DOWN+RIGHT] = new Uint32Array(width*height);
+    generateSweepCanvasPair(DOWN+RIGHT,DOWN+LEFT+RIGHT,-1);
+
+    sweepAreas[DOWN][DOWN+LEFT] = new Uint32Array(width*height);
+    sweepAreas[DOWN][DOWN+RIGHT] = new Uint32Array(width*height);
+    sweepAreas[DOWN+LEFT][DOWN] = new Uint32Array(width*height);
+    sweepAreas[DOWN+RIGHT][DOWN] = new Uint32Array(width*height);
+    generateSweepCanvasPair(DOWN,DOWN+LEFT,DOWN+RIGHT);
+
+    sweepAreas[DOWN][NONE] = new Uint32Array(width*height);
+    sweepAreas[NONE][DOWN] = new Uint32Array(width*height);
+    generateSweepSprings(NONE,DOWN);
+
+
+    sweepAreas[LEFT][DOWN+LEFT] = new Uint32Array(width*height);
+    sweepAreas[DOWN+LEFT][LEFT] = new Uint32Array(width*height);
+    generateSweepSprings(LEFT,LEFT+DOWN);
+
+    sweepAreas[RIGHT][DOWN+RIGHT] = new Uint32Array(width*height);
+    sweepAreas[DOWN+RIGHT][RIGHT] = new Uint32Array(width*height);
+    generateSweepSprings(RIGHT,RIGHT+DOWN);
+
+
+    sweepAreas[LEFT+RIGHT][DOWN+LEFT+RIGHT] = new Uint32Array(width*height);
+    sweepAreas[DOWN+LEFT+RIGHT][LEFT+RIGHT] = new Uint32Array(width*height);
+    generateSweepSprings(LEFT+RIGHT,LEFT+RIGHT+DOWN);
+
+
   }
 
   function drawBB(){
@@ -1997,7 +2266,7 @@ body {
                       <table border=1>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('eraser',eraserCol);return false;"><div class="unselected" id="color_1"></div>  
+                            <a href="#" onclick="selectTool('eraser',eraserCol);return false;"><div class="unselected" id="color_0"></div>  
                           </td>
                           <td>
                             eraser
