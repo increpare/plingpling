@@ -6,6 +6,7 @@
   var version="0.1";
   var gameTitle="My Game";
   var gameLink="www.flipgame.org"
+  var winText="Congratulations! You won!"
   var canvasIndex=0;
   var canvasses = new Array();
   var hyperlinks = new Array();
@@ -90,15 +91,15 @@ var bumperAuraCol=14;
 var flipperCol=4;
 var leftFlipperPivotCol=5;
 var rightFlipperPivotCol=6;
-var ballSpawnCol=7;
-var magnetCol=8;
-var magnetAuraCol=15;
+var ballSpawnCol=15;
+//var magnetCol=8;
+//var magnetAuraCol=15;
 var connectionCol=9;
 var targetCol=10;
 var targetActiveCol=16;
 var togglableWallCol=11;
 var togglableWallDisabledCol=17;
-var exitCol=13;
+var exitCol=8;
 var springCol=12;
 
 var lastPlacedLeftPivot=false;
@@ -274,6 +275,7 @@ function RLE_decode(encoded) {
 function stateToString(){
   var state = new Object();
   state.gameTitle=gameTitle;
+  state.winText=winText;
   state.gameLink=gameLink;
   state.canvasses=new Array();
   for (var i=0;i<16;i++){
@@ -293,6 +295,7 @@ function stateToString(){
 function stringToState(str){
   var state = JSON.parse(str);
   gameTitle=state.gameTitle;
+  winText=state.winText;
   gameLink=state.gameLink;
   canvasIndex=0;
   canvasses=new Array();
@@ -423,13 +426,15 @@ function press(evt){
 
   var bucketElem;
   function titleChange(newTitle){
-    gameTitle=newTitle;
+    gameTitle=newTitle;    
   }
 
   function linkChange(newLink){
     gameLink=newLink;
   }
-
+  function winTextChange(newWinText){
+    winText=newWinText;
+  }
 function clearPalette(){
   preserveUndoState();
   var canvas=canvasses[canvasIndex];
@@ -505,7 +510,6 @@ var ballPointFrames = [
       if (
             val>0 &&
             val!==bumperAuraCol &&
-            val!==magnetAuraCol && 
             val!==ballSpawnCol &&
             val!==exitCol &&
             val!==connectionCol){
@@ -694,6 +698,9 @@ var ballPointFrames = [
 
       linkInput=document.getElementById("linkInput");
       linkInput.value=gameLink;
+
+      winTextInput=document.getElementById("winText");
+      winTextInput.value=winText;
 
       
       radii = new Array();
@@ -1193,17 +1200,6 @@ function ballSpawnDraw(x,y){
   }
 }
 
-function magnetDraw(x,y){
-  var points = [[x,y],[x-1,y],[x,y+1],[x+1,y],[x,y-1]];
-
-  for (var i=0;i<points.length;i++){
-    var px=points[i][0];
-    var py=points[i][1];
-    if (px>=0&&px<width&&py>=0&&py<height){
-      canvas[px+width*py]=magnetCol;
-    }
-  }   
-}
 
 function connectionDraw(x,y){
   var points = [[x,y],[x-1,y],[x,y-1],[x-1,y-1]];
@@ -1230,7 +1226,7 @@ function targetDraw(x,y){
 
 }
 
-function toggableWallDraw(x,y){
+function togglableWallDraw(x,y){
   var points = [[x,y],[x-1,y],[x,y+1],[x+1,y],[x,y-1]];
 
   for (var i=0;i<points.length;i++){
@@ -1295,10 +1291,9 @@ function exitPointDraw(x,y){
     leftFlipperPivot: false,
     rightFlipperPivot: false,
     ballSpawn: false,
-    magnet: true,
     connection: true,
     target: true,
-    toggableWall: true,
+    togglableWall: true,
     spring: true,
     exitPoint: false
   }
@@ -1311,10 +1306,9 @@ function exitPointDraw(x,y){
     leftFlipperPivot: leftFlipperPivotDraw,
     rightFlipperPivot: rightFlipperPivotDraw,
     ballSpawn: ballSpawnDraw,
-    magnet: magnetDraw,
     connection: connectionDraw,
     target: targetDraw,
-    toggableWall: toggableWallDraw,
+    togglableWall: togglableWallDraw,
     spring: springDraw,
     exitPoint: exitPointDraw
   }
@@ -1379,7 +1373,7 @@ function exitPointDraw(x,y){
       for (var y=0;y<height;y++) {
         if (regionCanvas[x+width*y]===0){
           var val =canvas[x+width*y];
-          if (val===eraserCol||val===magnetAuraCol||val===bumperAuraCol){
+          if (val===eraserCol||val===bumperAuraCol){
             regionCanvas[x+width*y]=eraserCol;
           } else if (val===wallCol) {
             regionCanvas[x+width*y]=wallCol;
@@ -1547,18 +1541,6 @@ function exitPointDraw(x,y){
         }
       }
     }
-/*
-    for (var x=1;x<width-1;x++){
-      for (var y=1;y<height-1;y++){
-        var i = x+y*width;
-        if (
-          canvas[i]===magnetAuraCol || 
-          canvas[i]===bumperAuraCol)
-        {
-          canvas[i]=0;
-        }
-      }
-    }*/
 
     for (var regionNumberStr in pivotPoints){
       var regionNumber=Number(regionNumberStr);
@@ -1629,7 +1611,7 @@ function exitPointDraw(x,y){
     for (var x=1;x<width-1;x++){
       for (var y=1;y<height-1;y++){
         var val = canvas[x+width*y];
-        if (val===0 || val===magnetAuraCol || val===bumperAuraCol) {
+        if (val===0 || val===bumperAuraCol) {
           var neighbours = [
             [x-1,y-1],[x,y-1],[x+1,y-1],
             [x-1,y],      [x+1,y],
@@ -1643,10 +1625,7 @@ function exitPointDraw(x,y){
             if (v===bumperCol){
               canvas[x+width*y]=bumperAuraCol;
               break;
-            } else if (v===magnetCol){
-              canvas[x+width*y]=magnetAuraCol; 
-              break;             
-            }
+            } 
           }
         }
       }
@@ -1771,6 +1750,9 @@ body {
                  text-align: center;
                  font-size: 100%;
                  }
+                 input#endMessageInput {
+                  width:90%;
+                 }
                  li {
                  font-size: 150%;                 
                   text-align: center;
@@ -1862,6 +1844,7 @@ body {
                         <canvas id="mainCanvas" width="500" height="560" style="border:2px solid gray; background-color:black;"></canvas>
                         <br />
                         
+                        <input width="800" style="border:2px solid gray;" onkeydown="event.stopPropagation();" value="game win message"  id="winText" oninput="endMessageChange(this.value)" />
                       </center>
                     </td>
                     <td valign="top">
@@ -1876,7 +1859,7 @@ body {
                       <table border=1>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('eraser',1);return false;"><div class="unselected" id="color_1"></div>  
+                            <a href="#" onclick="selectTool('eraser',eraserCol);return false;"><div class="unselected" id="color_1"></div>  
                           </td>
                           <td>
                             eraser
@@ -1884,7 +1867,7 @@ body {
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('wall',2);return false;"><div class="unselected" id="color_2"></div>  
+                            <a href="#" onclick="selectTool('wall',wallCol);return false;"><div class="unselected" id="color_2"></div>  
                           </td>
                           <td>
                             wall
@@ -1892,7 +1875,7 @@ body {
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('bumper',3);return false;"><div class="unselected" id="color_3"></div>
+                            <a href="#" onclick="selectTool('bumper',bumperCol);return false;"><div class="unselected" id="color_3"></div>
                           </td>
                           <td>
                             bumper
@@ -1900,7 +1883,7 @@ body {
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('flipper',4);return false;"><div class="unselected" id="color_4"></div>
+                            <a href="#" onclick="selectTool('flipper',flipperCol);return false;"><div class="unselected" id="color_4"></div>
                           </td>
                           <td>
                             flipper
@@ -1908,7 +1891,7 @@ body {
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('leftFlipperPivot',5);return false;"><div class="unselected" id="color_5"></div>
+                            <a href="#" onclick="selectTool('leftFlipperPivot',leftFlipperPivotCol);return false;"><div class="unselected" id="color_5"></div>
                           </td>
                           <td>
                             left flipper pivot
@@ -1916,7 +1899,7 @@ body {
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('rightFlipperPivot',6);return false;"><div class="unselected" id="color_6"></div>
+                            <a href="#" onclick="selectTool('rightFlipperPivot',rightFlipperPivotCol);return false;"><div class="unselected" id="color_6"></div>
                           </td>
                           <td>
                             right flipper pivot
@@ -1924,7 +1907,7 @@ body {
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('ballSpawn',7);return false;"><div class="unselected" id="color_7"></div>
+                            <a href="#" onclick="selectTool('ballSpawn',ballSpawnCol);return false;"><div class="unselected" id="color_15"></div>
                           </td>
                           <td>
                             ball spawn
@@ -1932,15 +1915,7 @@ body {
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('magnet',8);return false;"><div class="unselected" id="color_8"></div>
-                          </td>
-                          <td>
-                            magnet
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <a href="#" onclick="selectTool('connection',9);return false;"><div class="unselected" id="color_9"></div>
+                            <a href="#" onclick="selectTool('connection',connectionCol);return false;"><div class="unselected" id="color_9"></div>
                           </td>
                           <td>
                             connection
@@ -1948,7 +1923,7 @@ body {
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('target',10);return false;"><div class="unselected" id="color_10"></div>
+                            <a href="#" onclick="selectTool('target',targetCol);return false;"><div class="unselected" id="color_10"></div>
                           </td>
                           <td>
                             target
@@ -1956,7 +1931,7 @@ body {
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('toggableWall',11);return false;"><div class="unselected" id="color_11"></div>
+                            <a href="#" onclick="selectTool('togglableWallCol',togglableWallCol);return false;"><div class="unselected" id="color_11"></div>
                           </td>
                           <td>
                             toggleable wall
@@ -1964,7 +1939,7 @@ body {
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('spring',12);return false;"><div class="unselected" id="color_12"></div>
+                            <a href="#" onclick="selectTool('spring',springCol);return false;"><div class="unselected" id="color_12"></div>
                           </td>
                           <td>
                             spring
@@ -1972,7 +1947,7 @@ body {
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('exitPoint',13);return false;"><div class="unselected" id="color_13"></div>
+                            <a href="#" onclick="selectTool('exitPoint',exitCol);return false;"><div class="unselected" id="color_8"></div>
                           </td>
                           <td>
                             exit point
