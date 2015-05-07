@@ -1,22 +1,19 @@
-<html xmlns="http://www.w3.org/1999/xhtml">
-  <head>
-<script src="FileSaver.js"></script>
-<script src="rng.js"></script>
-<script src="sfxr.js"></script>
-<script type="text/javascript" > 
-  var contexts = new Array();
+ var contexts = new Array();
   var version="0.1";
   var gameTitle="My Game";
   var gameLink="www.flipgame.org"
   var winText="Congratulations! You won!"
-  var canvasIndex=0;
-  var canvasses = new Array();
-
   var width=125;
   var height=140;
   var zoomFactor=4;
   var radius=5;
 
+  var canvasIndex=0;
+  var canvasses = new Array();
+  for (var i=0;i<16;i++){
+    canvasses[i] = new Uint8Array(width*height);
+  }
+  var dirty=false;
   var exitTriggered=false;
   var exitPointX=-1000;
   var exitPointY=-1000;
@@ -38,22 +35,8 @@
   var boundingBoxes = {};
   var regionTypes = [];
 
-  var leftSweepArea = new Uint32Array(width*height);
-  var rightSweepArea = new Uint32Array(width*height);
-
   var masterCanvas = new Uint8Array(width*height);
 
-  var down_then_leftSweepArea = new Uint32Array(width*height);
-  var down_then_rightSweepArea = new Uint32Array(width*height);
-
-  var right_then_leftSweepArea = new Uint32Array(width*height);
-  var left_then_rightSweepArea = new Uint32Array(width*height);
-  var downSweepArea = new Uint32Array(width*height);
-  
-  var leftSweepArea_inverse = new Uint32Array(width*height);
-  var rightSweepArea_inverse = new Uint32Array(width*height);
-  var bothSweepArea_inverse = new Uint32Array(width*height);
-  var downSweepArea_inverse = new Uint32Array(width*height);
   
 
 /*
@@ -143,7 +126,6 @@ var lastPlacedLeftPivot=false;
             ];
 */
   var colorElem = new Array();
-    var layerElem = new Array();
 
 var aurl = document.createElement('a');
 function qualifyURL(url) {
@@ -152,10 +134,6 @@ function qualifyURL(url) {
 }
 
 
-var radiusElem = new Array();
-  var thumbnailCanvas = new Array();
-  var thumbnailContext = new Array();
-  var dropdownOption = new Array();
 
 var standalone_HTML_String="";
 
@@ -236,7 +214,7 @@ function connectCables(region1,region2){
       r2=r;
       r2i=i;
     }
-    if (r1==r2){
+    if (r1===r2){
       return;
     }
   }
@@ -249,19 +227,22 @@ function connectCables(region1,region2){
     var ti = r1i;
     r1i=r2i;
     r2i=ti;
+    var tr = region1;
+    region1=region2;
+    region2=tr;
   } 
 
 
   if (r2===null){
     r2=[region2];
   } else {
-    connections.splice(r2,1);
+    connections.splice(r2,r2i);
   }
 
   if (r1===null){
     r1=[region1];
   } else{  
-    connections.splice(r1,1);
+    connections.splice(r1,r1i);
   }
 
   for (var i=0;i<r2.length;i++){
@@ -270,7 +251,7 @@ function connectCables(region1,region2){
       r1.push(item);
     }
   }
-  connections.push(r1);
+  connections.push(r1.concat(r2).unique());
 }
 
 function makeConnections(){
@@ -299,10 +280,10 @@ function makeConnections(){
 
       var v2Conducts = v2 === connectionCol || v2 === targetCol || v2 === togglableWallCol;
       var v3Conducts = v3 === connectionCol || v3 === targetCol || v3 === togglableWallCol;
-      if (v2Conducts && mainRegion!=rightRegion) {
+      if (v2Conducts && mainRegion!==rightRegion) {
         connectCables(mainRegion,rightRegion);
       }
-      if (v3Conducts && rightRegion!=belowRegion && mainRegion!=belowRegion){
+      if (v3Conducts && rightRegion!==belowRegion && mainRegion!==belowRegion){
         connectCables(mainRegion,belowRegion);
       }
     }
@@ -724,20 +705,6 @@ function clearPalette(){
 
   setVisuals();
 }
-    function setRadius(newRadius) {
-        radius=newRadius;
-        bucketElem.setAttribute("class","radius");
-        for(var i=0;i<16;i++){
-          if (radiusElem[i]!==null){
-            radiusElem[i].setAttribute("class","radius");
-          }
-        }
-        if (newRadius>0){
-          radiusElem[newRadius-1].setAttribute("class","radius selected");
-        } else {
-          bucketElem.setAttribute("class","radius selected");
-        }
-    }
 
 
 var colorElem = new Array();
@@ -1108,60 +1075,40 @@ function ballCollides(){
     function init() {
       setInterval(tick, tickLength);
 
-      titleInput=document.getElementById("titleInput");
-      titleInput.value=gameTitle;
+      if (PLAYER===false){
+        titleInput=document.getElementById("titleInput");
+        titleInput.value=gameTitle;
 
-      linkInput=document.getElementById("linkInput");
-      linkInput.value=gameLink;
+        linkInput=document.getElementById("linkInput");
+        linkInput.value=gameLink;
 
-      winTextInput=document.getElementById("winText");
-      winTextInput.value=winText;
+        winTextInput=document.getElementById("winText");
+        winTextInput.value=winText;
 
-      
-      radii = new Array();
-      for (var i=0;i<16;i++){
-        elem = document.getElementById("radius_"+(i+1));                
-        radiusElem[i]=elem;
-        
-      }
 
-      for (var i=0;i<16;i++){
-        elem = document.getElementById("col"+(i+1));
-        dropdownOption[i] = elem;        
-      }
-
-      for (var i=0;i<16;i++){
-        elem = document.getElementById("color_"+(i)); 
-        if (elem!==null){       
-          elem.style.backgroundColor=colorPalette[i];
-          colorElem[i]=elem;
+        for (var i=0;i<16;i++){
+          elem = document.getElementById("color_"+(i)); 
+          if (elem!==null){       
+            elem.style.backgroundColor=colorPalette[i];
+            colorElem[i]=elem;
+          }
         }
+
       }
-
-      for (var i=0;i<16;i++){
-        elem = document.getElementById("layerItem"+(i+1));        
-        layerElem[i]=elem;
-      }
-
-
-      bucketElem=document.getElementById("bucket");
-
-
-      for (var i=0;i<16;i++){
-        canvasses[i]=new Uint8Array(width*height);
-      }
-
 
       visibleCanvas = document.getElementById("mainCanvas");
-      visibleCanvas.addEventListener('mousedown', mouseDown,false);
-      visibleCanvas.addEventListener('mouseup', mouseUp,false);
-      visibleCanvas.addEventListener('mousemove', mouseMove,false);
-      visibleCanvas.addEventListener('mouseout', mouseOut,false);
 
-      var fileUploader = document.getElementById("my_file");
-      fileUploader.addEventListener('change', readFile, false);
+      if (PLAYER===false){
+        visibleCanvas.addEventListener('mousedown', mouseDown,false);
+        visibleCanvas.addEventListener('mouseup', mouseUp,false);
+        visibleCanvas.addEventListener('mousemove', mouseMove,false);
+        visibleCanvas.addEventListener('mouseout', mouseOut,false);
 
-      window.addEventListener('mouseup', mouseUp,false);
+        var fileUploader = document.getElementById("my_file");
+        fileUploader.addEventListener('change', readFile, false);
+
+        window.addEventListener('mouseup', mouseUp,false);
+      }
 
       visibleContext = visibleCanvas.getContext("2d");
       visibleContext.imageSmoothingEnabled= false;
@@ -1213,6 +1160,25 @@ function ballCollides(){
   }
 
   function getData(){ 
+
+    if (embeddedDat[0]!=='_'){
+      embeddedDat=decodeURI(embeddedDat);
+      
+      stringToState(embeddedDat);
+      setVisuals();
+
+      var homepage=gameState.gameLink;
+      var homepageLink = document.getElementById("homeLink");
+      homepageLink.innerHTML=strip_http(homepage);
+      if (!homepage.match(/^https?:\/\//)) {
+        homepage = "http://" + homepage;
+      }
+      homepageLink.href = homepage;
+
+      renderImages();
+      return;
+    }
+
     var id = getParameterByName("p").replace(/[\\\/]/,"");
     if (id===null||id.length===0) {
       
@@ -1293,9 +1259,11 @@ function ballCollides(){
       }
       lastbpy=bpy;
       lastbpx=bpx;
-      titleInput.value=gameTitle;
-      linkInput.value=gameLink;
-      winTextInput.value=winText;
+      if (PLAYER===false){
+        titleInput.value=gameTitle;
+        linkInput.value=gameLink;
+        winTextInput.value=winText;
+      }
       lastBallFrame=Math.floor(ballFrame);
     }
 
@@ -1330,6 +1298,10 @@ function ballCollides(){
 
   var undoList=new Array();
   function preserveUndoState() {
+
+    dirty=true;
+    bpx=-1000;
+    bpy=-1000;
     console.log("preserving undo state");
     var undoItem = new Object();
     undoItem.canvasDat=uint8ar_copy(masterCanvas);
@@ -2158,7 +2130,8 @@ function exitPointDraw(x,y){
   var DOWN = 4;
   var LEFT = 1;
   var RIGHT = 2;
-  sweepAreas = [];
+  var sweepAreas = [];
+
   function generateSweepOffsets() {
     for (var i=0;i<8;i++){
       sweepAreas[i]=[];
@@ -2363,274 +2336,3 @@ function exitPointDraw(x,y){
       }
     }
   }
-</script>
-
-    <style type="text/css">
-/*<![CDATA[*/
-#maincanvas {
-  cursor:crosshair;
-}
-body {
-    -webkit-user-select: none; /* webkit (safari, chrome) browsers */
-    -moz-user-select: none; /* mozilla browsers */
-    -khtml-user-select: none; /* webkit (konqueror) browsers */
-    -ms-user-select: none; /* IE10+ */ 
-}
-                 select {
-                  background-color:black;
-                  color:white;
-                  text-indent:5px;
-                 }
-                canvas {
-                  position:relative;
-                }
-                 body {
-                 background-color:black;
-                 color: gray;
-                 margin-top: 0;
-                 padding-top: 0;
-                 border-top: 0;
-                 }
-                 ul {
-                 list-style-type: none;
-                 overflow:hidden; overflow-y:scroll;
-                 }
-                 input {
-                 background-color: black;
-                 color:white;
-                 text-align: center;
-                 font-size: 100%;
-                 }
-                 input#linkInput {
-                 background-color: black;
-                 color:white;
-                 text-align: center;
-                 font-size: 100%;
-                 }
-                 input#winText {
-                  width:90%;
-                 }
-                 li {
-                 font-size: 150%;                 
-                  text-align: center;
-                  width:100%;
-                 }
-                 a {
-                  color:white;
-                 }
-                 a.layerItem{
-                  color: white;
-                  background-color: black;
-                  text-decoration: none;
-                  width:100%;
-                  display:block;
-                 }
-                 a.layerItem.selectedItem{
-                  color: black;
-                  background-color: white;
-                 }
-                 img.selected {
-                  border: 2px solid red;
-                 }
-                 li.selected  {
-                 cursor:auto;
-                 color:white;
-                 }
-                 a{
-                  white-space:nowrap;
-                }
-                 div.selected {
-                 height:16px; 
-                 width:30px;
-                 border: 2px solid red;
-                 }
-                 div.unselected {
-                 height:16px; 
-                 width:30px;
-                 border: 2px solid black;
-                 }
-                 span.selected {
-                 height:16px; 
-                 width:30px;
-                 border: 2px solid red;
-                 }
-                 span.unselected {
-                 height:16px; 
-                 width:30px;
-                 border: 2px solid black;
-                 }
-                 img.radius {
-                  border: 1px solid black;
-                 }
-                 img.selected {
-                  border: 1px solid red; 
-                 }
-                 select {
-                 width:100%;
-                 -webkit-appearance: none;
-                 -moz-appearance: none;
-                 }
-                 select::-ms-expand {
-                 display: none;
-                 }
-                 canvas#dropdownthumb {
-                  border:2px solid gray; 
-                  background-color:black;
-                 }
-    /*]]>*/
-    </style>
-    <title>
-      pinballl
-    </title>
-  </head>
-  <body onload="init();" ondragstart="return false;" ondrop="return false;">
-  <center>
-    <table cellpadding="10">
-      <tr>
-        <td valign="top">
-          <table>
-            <tr>
-              <td>
-                <table>
-                  <tr>
-                    <td>
-                      <center>
-                        <input width="640" style="border:2px solid gray;" onkeydown="event.stopPropagation();" value="game title"  id="titleInput" oninput="titleChange(this.value)" />
-                        <input width="640" style="border:2px solid gray;" onkeydown="event.stopPropagation();" value="www.flipgame.org"  id="linkInput" oninput="linkChange(this.value)" />
-                        <br/>
-                        <canvas id="mainCanvas" width="500" height="560" style="border:2px solid gray; background-color:black;"></canvas>
-                        <br />
-                        
-                        <input width="800" style="border:2px solid gray;" onkeydown="event.stopPropagation();" value="game win message"  id="winText" oninput="winTextChange(this.value)" />
-                      </center>
-                    </td>
-                    <td valign="top">
-                      <a href="#" onclick="shareClick();return false;">&ocir; share</a><br />
-                      <div id="shareLink"></div>
-                      <a href="#" onclick="exportClick();return false;">&sdotb; export</a><br />
-                      <a href="#" onclick="document.getElementById('my_file').click();return false;">&sdotb; import</a><br />
-                      <input type="file" accept=".html" id="my_file" style="display: none;" />
-                      <a href="help.html" target="_blank" title="blah">? help</a>
-                      <br />
-                      <br/>
-                      <table border=1>
-                        <tr>
-                          <td>
-                            <a href="#" onclick="selectTool('eraser',eraserCol);return false;"><div class="unselected" id="color_0"></div>  
-                          </td>
-                          <td>
-                            eraser
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <a href="#" onclick="selectTool('wall',wallCol);return false;"><div class="selected" id="color_2"></div>  
-                          </td>
-                          <td>
-                            wall
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <a href="#" onclick="selectTool('bumper',bumperCol);return false;"><div class="unselected" id="color_3"></div>
-                          </td>
-                          <td>
-                            bumper
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <a href="#" onclick="selectTool('flipper',flipperCol);return false;"><div class="unselected" id="color_4"></div>
-                          </td>
-                          <td>
-                            flipper
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <a href="#" onclick="selectTool('ballSpawn',ballSpawnCol);return false;"><div class="unselected" id="color_15" style="text-align:center; background-color:'black';"><img src="spawnicon.png"></div>
-                          </td>
-                          <td>
-                            ball spawn
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <a href="#" onclick="selectTool('exitPoint',exitCol);return false;"><div class="unselected" id="color_6" style="text-align:center; background-color:'black';"><img src='exiticon.png'></div>
-                          </td>
-                          <td>
-                            exit point
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <a href="#" onclick="selectTool('spring',springCol);return false;"><div class="unselected" id="color_12"></div>
-                          </td>
-                          <td>
-                            spring
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <a href="#" onclick="selectTool('leftFlipperPivot',leftFlipperPivotCol);return false;"><div class="unselected" id="color_5"></div>
-                          </td>
-                          <td>
-                            &#8634; flipper pivot
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <a href="#" onclick="selectTool('rightFlipperPivot',rightFlipperPivotCol);return false;"><div class="unselected" id="color_8"></div>
-                          </td>
-                          <td>
-                            &#8635; flipper pivot
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <a href="#" onclick="selectTool('connection',connectionCol);return false;"><div class="unselected" id="color_9"></div>
-                          </td>
-                          <td>
-                            connection
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <a href="#" onclick="selectTool('target',targetCol);return false;"><div class="unselected" id="color_10"></div>
-                          </td>
-                          <td>
-                            target
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <a href="#" onclick="selectTool('togglableWall',togglableWallCol);return false;"><div class="unselected" id="color_11"></div>
-                          </td>
-                          <td>
-                            toggleable wall
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
-                            <a href="#" onclick="clearPalette();return false;" style=" text-decoration: none;"><div class="unselected" style="text-align:center;">X</div>
-                          </td>
-                          <td>
-                            clear canvas
-                          </td>
-                        </tr>
-                      </table>   
-                      <p>
-                      <a href="#" onclick="clickPlay();return false;">&#9654; Play</a>
-                    </td>
-                  </tr>
-                </table>
-                <br />
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-    </center>
-  </body>
-</html>
