@@ -1159,23 +1159,33 @@ function ballCollides(){
      return url;
   }
 
-  function getData(){ 
-
-    if (embeddedDat[0]!=='_'){
-      embeddedDat=decodeURI(embeddedDat);
-      
-      stringToState(embeddedDat);
-      setVisuals();
-
-      var homepage=gameState.gameLink;
-      var homepageLink = document.getElementById("homeLink");
+  function setTexts(){
+    if (PLAYER===true){
+      var homepageLink = document.getElementById("homepageLinkPlayer");
+      var gameTitleHeader = document.getElementById("gameTitleHeader");
+      var homepage=gameLink;
       homepageLink.innerHTML=strip_http(homepage);
       if (!homepage.match(/^https?:\/\//)) {
         homepage = "http://" + homepage;
       }
       homepageLink.href = homepage;
 
-      renderImages();
+      gameTitleHeader.innerHTML = gameTitle;
+
+    }else{
+        titleInput.value=gameTitle;
+        linkInput.value=gameLink;
+        winTextInput.value=winText;
+    } 
+  }
+  function getData(){ 
+
+    if (embeddedDat[0]!=='_'){
+      embeddedDat=decodeURI(embeddedDat);
+
+      stringToState(embeddedDat);
+      setVisuals();
+      setTexts();
       return;
     }
 
@@ -1185,6 +1195,15 @@ function ballCollides(){
       return;
     }
 
+
+
+    var hacklink = document.getElementById("hackLink");
+
+    var url = "index.html?p="+id;
+    url=qualifyURL(url);
+    hacklink.href=url;
+    hacklink.innerHTML="&sdotb; edit";
+    
     var githubURL = 'https://api.github.com/gists/'+id;
 
     var githubHTTPClient = new XMLHttpRequest();
