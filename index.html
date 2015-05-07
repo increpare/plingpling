@@ -1,0 +1,167 @@
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+<script type="text/javascript" >
+var PLAYER=false;
+var embeddedDat="__EMBED__";
+</script>
+<script src="FileSaver.js"></script>
+<script src="rng.js"></script>
+<script src="sfxr.js"></script>
+<script src="pinball.js" > </script>
+<script src="editor.js" > </script>
+<link href="style.css" rel="stylesheet">
+    <title>
+      pinballl
+    </title>
+  </head>
+  <body onload="init();" ondragstart="return false;" ondrop="return false;">
+  <center>
+    <table cellpadding="10">
+      <tr>
+        <td valign="top">
+          <table>
+            <tr>
+              <td>
+                <table>
+                  <tr>
+                    <td>
+                      <center>
+                        <input width="640" style="border:2px solid gray;" onkeydown="event.stopPropagation();" value="game title"  id="titleInput" oninput="titleChange(this.value)" />
+                        <input width="640" style="border:2px solid gray;" onkeydown="event.stopPropagation();" value="www.flipgame.org"  id="linkInput" oninput="linkChange(this.value)" />
+                        <br/>
+                        <canvas id="mainCanvas" width="500" height="560" style="border:2px solid gray; background-color:black;"></canvas>
+                        <br />
+                        
+                        <input width="800" style="border:2px solid gray;" onkeydown="event.stopPropagation();" value="game win message"  id="winText" oninput="winTextChange(this.value)" />
+                      </center>
+                    </td>
+                    <td valign="top">
+                      <a href="#" onclick="shareClick();return false;">&ocir; share</a><br />
+                      <div id="shareLink"></div>
+                      <a href="#" onclick="exportClick();return false;">&sdotb; export</a><br />
+                      <a href="#" onclick="document.getElementById('my_file').click();return false;">&sdotb; import</a><br />
+                      <input type="file" accept=".html" id="my_file" style="display: none;" />
+                      <a href="help.html" target="_blank" title="blah">? help</a>
+                      <br />
+                      <br/>
+                      <table border=1>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('eraser',eraserCol);return false;"><div class="unselected" id="color_0"></div>  
+                          </td>
+                          <td>
+                            eraser
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('wall',wallCol);return false;"><div class="selected" id="color_2"></div>  
+                          </td>
+                          <td>
+                            wall
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('bumper',bumperCol);return false;"><div class="unselected" id="color_3"></div>
+                          </td>
+                          <td>
+                            bumper
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('flipper',flipperCol);return false;"><div class="unselected" id="color_4"></div>
+                          </td>
+                          <td>
+                            flipper
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('ballSpawn',ballSpawnCol);return false;"><div class="unselected" id="color_15" style="text-align:center; background-color:'black';"><img src="spawnicon.png"></div>
+                          </td>
+                          <td>
+                            ball spawn
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('exitPoint',exitCol);return false;"><div class="unselected" id="color_6" style="text-align:center; background-color:'black';"><img src='exiticon.png'></div>
+                          </td>
+                          <td>
+                            exit point
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('spring',springCol);return false;"><div class="unselected" id="color_12"></div>
+                          </td>
+                          <td>
+                            spring
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('leftFlipperPivot',leftFlipperPivotCol);return false;"><div class="unselected" id="color_5"></div>
+                          </td>
+                          <td>
+                            &#8634; flipper pivot
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('rightFlipperPivot',rightFlipperPivotCol);return false;"><div class="unselected" id="color_8"></div>
+                          </td>
+                          <td>
+                            &#8635; flipper pivot
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('connection',connectionCol);return false;"><div class="unselected" id="color_9"></div>
+                          </td>
+                          <td>
+                            connection
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('target',targetCol);return false;"><div class="unselected" id="color_10"></div>
+                          </td>
+                          <td>
+                            target
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('togglableWall',togglableWallCol);return false;"><div class="unselected" id="color_11"></div>
+                          </td>
+                          <td>
+                            toggleable wall
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="clearPalette();return false;" style=" text-decoration: none;"><div class="unselected" style="text-align:center;">X</div>
+                          </td>
+                          <td>
+                            clear canvas
+                          </td>
+                        </tr>
+                      </table>   
+                      <p>
+                      <a href="#" onclick="clickPlay();return false;">&#9654; Play</a>
+                    </td>
+                  </tr>
+                </table>
+                <br />
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+    </center>
+  </body>
+</html>
