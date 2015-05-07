@@ -1105,17 +1105,23 @@ function ballCollides(){
     setVisuals();
   }
 
+
+
+var aurl = document.createElement('a');
+function qualifyURL(url) {
+ aurl.href = url;
+ return aurl.href;
+}
+
+
     function init() {
       setInterval(tick, tickLength);
 
       titleInput=document.getElementById("titleInput");
-      titleInput.value=gameTitle;
+      titleInput.innerHTML=gameTitle;
 
       linkInput=document.getElementById("linkInput");
-      linkInput.value=gameLink;
-
-      winTextInput=document.getElementById("winText");
-      winTextInput.value=winText;
+      linkInput.innerHTML='<a href="'+qualifyURL(gameLink)+'">'+gameLink+"</a>";
 
       
       radii = new Array();
@@ -2495,13 +2501,12 @@ body {
                   <tr>
                     <td>
                       <center>
-                        <input width="640" style="border:2px solid gray;" onkeydown="event.stopPropagation();" value="game title"  id="titleInput" oninput="titleChange(this.value)" />
-                        <input width="640" style="border:2px solid gray;" onkeydown="event.stopPropagation();" value="www.flipgame.org"  id="linkInput" oninput="linkChange(this.value)" />
-                        <br/>
+                        <h1 width="640" style="border:2px solid gray;" onkeydown="event.stopPropagation();" value="game title"  id="titleInput" oninput="titleChange(this.value)" /></h1>
+                         <br/>
                         <canvas id="mainCanvas" width="500" height="560" style="border:2px solid gray; background-color:black;"></canvas>
                         <br />
-                        
-                        <input width="800" style="border:2px solid gray;" onkeydown="event.stopPropagation();" value="game win message"  id="winText" oninput="winTextChange(this.value)" />
+                        <div width="640" style="border:2px solid gray;" onkeydown="event.stopPropagation();" value="www.flipgame.org"  id="linkInput" oninput="linkChange(this.value)" /></div>
+                       
                       </center>
                     </td>
                     <td valign="top">
