@@ -226,7 +226,7 @@ function connectCables(region1,region2){
       r2=r;
       r2i=i;
     }
-    if (r1===r2){
+    if ((r1!==null)&&(r1===r2)){
       return;
     }
   }
@@ -631,7 +631,10 @@ function press(evt){
   else if (evt.keyCode===80 ){//p
     compile();
     spawnBall();
-  }  else if (evt.keyCode===82){
+  }  else if (evt.keyCode===82){//r
+    if (exitTriggered){
+      compile();
+    }
     spawnBall();
   }else if (evt.keyCode===67) { //c
     copyImage=JSON.stringify(masterCanvas);
@@ -1135,7 +1138,8 @@ function ballCollides(){
       bpx=-1000;
       bpy=-1000;      
       playSound(81031108);
-      alert(winText);
+      canvasIndex=0;
+      alert(winText + "\n score : "+score);
     }
     setVisuals();
   }
@@ -1338,7 +1342,7 @@ function ballCollides(){
         clampSpeed();
       }
 
-      if (exitTriggered && PLAYER===false){
+      if (exitTriggered && PLAYER===true){
         wonindex=(wonindex+1)%(colorPalette.length*15);
         var coloroffset=Math.floor(wonindex/15);
         for (var i=0;i<width;i++){
