@@ -4,7 +4,8 @@ start=`date +%s`
 rm -rf bin
 mkdir bin
 echo inlining standalone template
-inliner play.html > bin/play_inlined.txt
+rm play_inlined.txt
+inliner -n play.html > play_inlined.txt
 echo copying files
 cp gzipper bin/
 cp -r *.* bin/

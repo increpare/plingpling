@@ -598,20 +598,11 @@ SoundEffect.prototype.getBuffer = function() {
 
 SoundEffect.prototype.play = function() {
   var source = AUDIO_CONTEXT.createBufferSource();
-  var filter1 = AUDIO_CONTEXT.createBiquadFilter();
-  var filter2 = AUDIO_CONTEXT.createBiquadFilter();
-  var filter3 = AUDIO_CONTEXT.createBiquadFilter();
 
   source.buffer = this._buffer;
-  source.connect(filter1);
+  source.connect(AUDIO_CONTEXT.destination);
 
-  filter1.frequency.value = 1600;
-  filter2.frequency.value = 1600;
-  filter3.frequency.value = 1600;
 
-  filter1.connect(filter2);
-  filter2.connect(filter3);
-  filter3.connect(AUDIO_CONTEXT.destination);
   var t = AUDIO_CONTEXT.currentTime;
   if (typeof source.start != 'undefined') {
     source.start(t);
@@ -963,7 +954,14 @@ function cacheSeed(seed){
   return sound;
 }
 
+var lastSoundCoord=-1;
 function playSound(seed) {
+  var curCoord=Math.round(bpx)+100000*Math.round(bpy)+seed*1000;
+  if (curCoord===lastSoundCoord){
+    return;
+  }
   var sound = cacheSeed(seed);
   sound.play();
+
+  lastSoundCoord=curCoord;
 }

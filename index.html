@@ -1,5 +1,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
+  <meta charset="UTF-8">
+
 <link rel="icon" 
       type="image/png" 
       href="favicon.png">
@@ -19,6 +21,7 @@ var embeddedDat="__EMBED__";
   </head>
   <body onload="init();" ondragstart="return false;" ondrop="return false;">
   <center>
+  <table>
     <table cellpadding="10">
       <tr>
         <td valign="top">
@@ -47,108 +50,117 @@ var embeddedDat="__EMBED__";
                       <a href="help.html" target="_blank" title="blah">? help</a>
                       <br />
                       <br/>
+                      
+                      <table style="width:100%;">
+                      <tr>
+                      <td style="text-align:center;width:20px;"><a href="#" onclick="cyclePalette(-1);return false;">&lt;</a></td>
+                      <td></td>
+                      <td style="text-align:center;width:20px;"><a href="#" onclick="cyclePalette(+1);return false;">&gt;</a></td>
+                      </tr>
+                      </table>
+
                       <table border=1>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('eraser',eraserCol);return false;"><div class="unselected" id="color_0"></div>  
+                            <a href="#" onclick="selectTool('eraser',eraserCol);return false;"><div class="unselected" id="color_0"></div></a>
                           </td>
-                          <td>
+                          <td colspan=2>
                             eraser
                           </td>
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('wall',wallCol);return false;"><div class="selected" id="color_2"></div>  
+                            <a href="#" onclick="selectTool('wall',wallCol);return false;"><div class="selected" id="color_2"></div>  </a>
                           </td>
-                          <td>
+                          <td colspan=2>
                             wall
                           </td>
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('bumper',bumperCol);return false;"><div class="unselected" id="color_3"></div>
+                            <a href="#" onclick="selectTool('bumper',bumperCol);return false;"><div class="unselected" id="color_3"></div></a>
                           </td>
-                          <td>
+                          <td colspan=2>
                             bumper
                           </td>
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('flipper',flipperCol);return false;"><div class="unselected" id="color_4"></div>
+                            <a href="#" onclick="selectTool('flipper',flipperCol);return false;"><div class="unselected" id="color_4"></div></a>
                           </td>
-                          <td>
+                          <td colspan=2>
                             flipper
                           </td>
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('ballSpawn',ballSpawnCol);return false;"><div class="unselected" id="color_15" style="text-align:center; background-color:'black';"><img src="spawnicon.png"></div>
+                            <a href="#" onclick="selectTool('ballSpawn',ballSpawnCol);return false;"><div class="unselected" id="color_15" style="text-align:center; background-color:'black';"><img src="spawnicon.png"></div></a>
                           </td>
-                          <td>
+                          <td colspan=2>
                             ball spawn
                           </td>
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('exitPoint',exitCol);return false;"><div class="unselected" id="color_6" style="text-align:center; background-color:'black';"><img src='exiticon.png'></div>
+                            <a href="#" onclick="selectTool('exitPoint',exitCol);return false;"><div class="unselected" id="color_6" style="text-align:center; background-color:'black';"><img src='exiticon.png'></div></a>
                           </td>
-                          <td>
+                          <td colspan=2>
                             exit point
                           </td>
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('spring',springCol);return false;"><div class="unselected" id="color_12"></div>
+                            <a href="#" onclick="selectTool('spring',springCol);return false;"><div class="unselected" id="color_12"></div></a>
                           </td>
-                          <td>
+                          <td colspan=2>
                             spring
                           </td>
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('leftFlipperPivot',leftFlipperPivotCol);return false;"><div class="unselected" id="color_5"></div>
+                            <a href="#" onclick="selectTool('leftFlipperPivot',leftFlipperPivotCol);return false;"><div class="unselected" id="color_5"></div></a>
                           </td>
-                          <td>
+                          <td colspan=2>
                             &#8634; flipper pivot
                           </td>
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('rightFlipperPivot',rightFlipperPivotCol);return false;"><div class="unselected" id="color_8"></div>
+                            <a href="#" onclick="selectTool('rightFlipperPivot',rightFlipperPivotCol);return false;"><div class="unselected" id="color_8"></div></a>
                           </td>
-                          <td>
+                          <td colspan=2>
                             &#8635; flipper pivot
                           </td>
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('connection',connectionCol);return false;"><div class="unselected" id="color_9"></div>
+                            <a href="#" onclick="selectTool('connection',connectionCol);return false;"><div class="unselected" id="color_9"></div></a>
                           </td>
-                          <td>
+                          <td colspan=2>
                             connection
                           </td>
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('target',targetCol);return false;"><div class="unselected" id="color_10"></div>
+                            <a href="#" onclick="selectTool('target',targetCol);return false;"><div class="unselected" id="color_10"></div></a>
                           </td>
-                          <td>
+                          <td colspan=2>
                             target
                           </td>
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('togglableWall',togglableWallCol);return false;"><div class="unselected" id="color_11"></div>
+                            <a href="#" onclick="selectTool('togglableWall',togglableWallCol);return false;"><div class="unselected" id="color_11"></div></a>
                           </td>
-                          <td>
+                          <td colspan=2>
                             toggleable wall
                           </td>
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="clearPalette();return false;" style=" text-decoration: none;"><div class="unselected" style="text-align:center;">X</div>
+                            <a href="#" onclick="clearPalette();return false;" style=" text-decoration: none;"><div class="unselected" style="text-align:center;">X</div></a>
                           </td>
-                          <td>
+                          <td colspan=2>
                             clear canvas
                           </td>
                         </tr>

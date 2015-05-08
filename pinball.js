@@ -7,7 +7,6 @@
   var height=140;
   var zoomFactor=4;
   var radius=5;
-
   var canvasIndex=0;
   var canvasses = new Array();
   for (var i=0;i<16;i++){
@@ -27,6 +26,7 @@
   var lastX=-1;
   var lastY=-1;
   var shareLinkInner;
+  var mainPaletteOffset=0;
 
   var regionCanvasCount = 2;
   //canvas id 1 = empty space
@@ -64,7 +64,7 @@
 
 //dawnbringer
 //http://www.pixeljoint.com/forum/forum_posts.asp?TID=12795
-  var colorPalette = [
+  var sourcePalette = [
           "#000000",//0
            "#000000",//1
             "#c2c2c2",//2
@@ -85,6 +85,8 @@
             "#351d1d", //17
             "#8888ff" //18
             ];
+
+  var colorPalette = sourcePalette;
 
 var eraserCol=0;
 var wallCol=2;
@@ -138,18 +140,19 @@ function qualifyURL(url) {
 
 var standalone_HTML_String="";
 
-var clientStandaloneRequest = new XMLHttpRequest();
+if (PLAYER!==true){
+  var clientStandaloneRequest = new XMLHttpRequest();
 
-clientStandaloneRequest.open('GET', 'play.html');
-clientStandaloneRequest.onreadystatechange = function() {
+  clientStandaloneRequest.open('GET', 'play_inlined.txt');
+  clientStandaloneRequest.onreadystatechange = function() {
 
-    if(clientStandaloneRequest.readyState!=4) {
-      return;
-    }
-    standalone_HTML_String=clientStandaloneRequest.responseText;
+      if(clientStandaloneRequest.readyState!=4) {
+        return;
+      }
+      standalone_HTML_String=clientStandaloneRequest.responseText;
+  }
+  clientStandaloneRequest.send();
 }
-clientStandaloneRequest.send();
-
 
 var get_blob = function() {
     return self.Blob;
@@ -164,6 +167,7 @@ function buildStandalone(sourceCode) {
   var htmlString = standalone_HTML_String.concat("");
 
 
+  htmlString = "<!--Save as html file-->\n"+htmlString;
   htmlString = htmlString.replace(/__EMBED__/g,sourceCode);
 
   var BB = get_blob();
@@ -200,7 +204,6 @@ Array.prototype.unique = function() {
 
 var connections=[];
 function connectCables(region1,region2){
-
   var r1=null;
   var r1i=-1;
   var r2=null;
@@ -237,21 +240,15 @@ function connectCables(region1,region2){
   if (r2===null){
     r2=[region2];
   } else {
-    connections.splice(r2,r2i);
+    connections.splice(r2,1);
   }
 
   if (r1===null){
     r1=[region1];
   } else{  
-    connections.splice(r1,r1i);
+    connections.splice(r1,1);
   }
 
-  for (var i=0;i<r2.length;i++){
-    var item=r2[i];
-    if (r1.indexOf(item)===-1){
-      r1.push(item);
-    }
-  }
   connections.push(r1.concat(r2).unique());
 }
 
@@ -381,6 +378,7 @@ function stateToString(){
   state.winText=winText;
   state.gameLink=gameLink;
   state.canvasses=new Array();
+  state.mainPaletteOffset=mainPaletteOffset;
   for (var i=0;i<16;i++){
     var canvas=canvasses[i];
     var s="";
@@ -399,6 +397,11 @@ function stringToState(str){
   gameTitle=state.gameTitle;
   winText=state.winText;
   gameLink=state.gameLink;
+    mainPaletteOffset=0;
+  if ("mainPaletteOffset" in state){
+    cyclePalette(state.mainPaletteOffset);
+  } else {
+  }
   canvasIndex=0;
   canvasses=new Array();
   for (var k=0;k<state.canvasses.length;k++){
@@ -434,12 +437,11 @@ function applyCanvasSweep(sweepArea){
   var x = Math.round(bpx);
   var y = Math.round(bpy);    
   var points = [
-              [x-1,y+2],[x,y+2],[x+1,y+2],
-    [x-2,y+1],[x-1,y+1],[x,y+1],[x+1,y+1],[x+2,y+1],
-    [x-2,y  ],[x-1,y  ],[x,y  ],[x+1,y  ],[x+2,y  ],
-    [x-2,y-1],[x-1,y-1],[x,y-1],[x+1,y-1],[x+2,y-1],
-              [x-1,y-2],[x,y-2],[x+1,y-2]
-    ];
+                              [x+1,y+0],[x+2,y+0],
+                  [x+0,y+1],[x+1,y+1],[x+2,y+1],[x+3,y+1],
+                  [x+0,y+2],[x+1,y+2],x+2+width*(y+2),[x+3,y+2],
+                              [x+1,y+3],[x+2,y+3]
+                  ];
     var maxDX=0;
     var maxDY=0;
   for (var i=0;i<points.length;i++){
@@ -535,7 +537,10 @@ function interpolateAreas(oldCanvasIndex,newCanvasIndex){
 }
 
 function setCanvasIndex(oldCanvasIndex,newCanvasIndex){
-  
+  if (dirty){
+    compile();
+  }
+
   var steps = interpolateAreas(oldCanvasIndex,newCanvasIndex);
   for (var i=0;i<steps.length-1;i++){
     var source = steps[i];
@@ -546,9 +551,7 @@ function setCanvasIndex(oldCanvasIndex,newCanvasIndex){
     if (sweepArea==null){
       console.log( "setCanvasIndex not found " + source+" -> " + target );
       return;
-    } else {
-      console.log(source + " -> " + target);
-    }
+    } 
 
     applyCanvasSweep( sweepArea );
   }
@@ -609,10 +612,12 @@ function press(evt){
     setVisuals();
     setLayer(canvasIndex+1); 
   } */
-  if (evt.keyCode===80 || evt.keyCode===82){//p
+  if (evt.keyCode===80 ){//p
     compile();
     spawnBall();
-  } else if (evt.keyCode===67) { //c
+  }  else if (evt.keyCode===82){
+    spawnBall();
+  }else if (evt.keyCode===67) { //c
     copyImage=JSON.stringify(masterCanvas);
     //copyImage=JSON.stringify(canvasses[canvasIndex])
   } else if (evt.keyCode===86){ //v
@@ -674,7 +679,7 @@ function press(evt){
       masterCanvas=dat.canvasDat;
       compile();
       setVisuals();
-      if (shareLinkInner!==null){
+      if (shareLinkInner!=null){
         shareLinkInner.style.color="gray";
       }
     }
@@ -803,6 +808,7 @@ function ballCollides(){
     }
 
     if (connectionGroupIndex===-1){
+      playSound(89718103);
       return;
     }
     activatedConnections.push(regionNumber);
@@ -831,7 +837,7 @@ function ballCollides(){
       removeTogglableWalls(r);
       playSound(66445903);
     } else {
-      playSound(11285108);
+      playSound(89718103);
     }
   }
 
@@ -848,12 +854,12 @@ function ballCollides(){
 
       for (var x=bbox[0];x<=bbox[2];x++){      
         for (var y=bbox[1];y<=bbox[3];y++){
-          var i = x+width*y;
-          if (regionCanvas[i]===rowRegionNum){            
+          var index = x+width*y;
+          if (regionCanvas[index]===rowRegionNum){            
             for (var j=0;j<canvasses.length;j++){
               var canvas=canvasses[j];
-              if (canvas[i]===togglableWallCol){
-                canvas[i]=togglableWallDisabledCol;
+              if (canvas[index]===togglableWallCol){
+                canvas[index]=togglableWallDisabledCol;
               }
             }
           }
@@ -945,9 +951,10 @@ function ballCollides(){
   }
   var ballSpinSpeed=0.4;
   var bumperHit=-1;
+  var lastsoundpos_bump=-1;
   function tick(){
     if (PLAYER&&loaded){
-      if (bpy<-500||bpy>height+5){
+      if ((bpy<-500||bpy>height+5)&&exitTriggered===false){
         spawnBall();
       }
     }
@@ -959,6 +966,9 @@ function ballCollides(){
     var oldSpeedY=speedY;
     var canvas=canvasses[canvasIndex];
     if (bpx<-10){
+      if (PLAYER&&exitTriggered){
+        setVisuals();
+      }
       return;
     }
     var G=0.001;
@@ -1009,9 +1019,9 @@ function ballCollides(){
 
       var normal = normalized([avgx,avgy]);
       var nSpeed = [-speedX,-speedY];
-
+      var targetsound=67922907;
       if (bumperCount>0){
-        playSound(64236300);
+        targetsound=64236300;
         var speedMag=mag(nSpeed);
         speedMag+=bumperSpeed;
         if (speedMag>maxSpeed){
@@ -1022,7 +1032,11 @@ function ballCollides(){
         speedY=nSpeed[1];
         clampSpeed();
       } else {
-        playSound(67922907);
+      }
+
+      var soundpos = Math.round(bpx)+1000*Math.round(bpy);
+      if(soundpos!==lastsoundpos_bump){
+        playSound(targetsound);
       }
 
       var direction = (nSpeed[0]*normal[1]-nSpeed[1]*normal[0]);
@@ -1077,6 +1091,9 @@ function ballCollides(){
     var bpyr=Math.round(bpy);
     if (exitTriggered ===false && bpxr<=exitPointX&&exitPointX<=bpxr+4 && bpyr<=exitPointY&&exitPointY<=bpyr+4 ){
       exitTriggered=true;
+      wonindex=13;
+      bpx=-1000;
+      bpy=-1000;      
       playSound(81031108);
       alert(winText);
     }
@@ -1249,7 +1266,20 @@ function ballCollides(){
   var lastbpy;
   var lastBallFrame=ballFrame;
 
+  var wonindex=4;
+
     function setVisuals(){
+      if (PLAYER&&loaded===false){
+        visibleContext.fillStyle="#ff0000";
+        visibleContext.fillRect(0,0,visibleCanvas.width/2,visibleCanvas.height/2);
+        visibleContext.fillStyle="#00ff00";
+        visibleContext.fillRect(visibleCanvas.width/2,0,visibleCanvas.width/2,visibleCanvas.height/2);
+        visibleContext.fillStyle="#ff00ff";
+        visibleContext.fillRect(0,visibleCanvas.height/2,visibleCanvas.width/2,visibleCanvas.height/2);
+        visibleContext.fillStyle="#00ffff";
+        visibleContext.fillRect(visibleCanvas.width/2,visibleCanvas.height/2,visibleCanvas.width/2,visibleCanvas.height/2);
+        return;
+      }
       //visibleContext.drawImage(canvasses[canvasIndex], 0, 0); 
       //visibleContext.drawImage(canvasses[canvasIndex], 0, 0,width*zoomFactor,height*zoomFactor); 
       var canvas=canvasses[canvasIndex];
@@ -1259,6 +1289,24 @@ function ballCollides(){
         speedX+=(Math.random()*2-1.0)*0.2;
         speedY+=(Math.random()*2-1.0)*0.2;
         clampSpeed();
+      }
+
+      if (exitTriggered){
+        wonindex=(wonindex+1)%(colorPalette.length*15);
+        var coloroffset=Math.floor(wonindex/15);
+        for (var i=0;i<width;i++){
+          for (var j=0;j<height;j++){
+            var pixelIndex = (canvas[i+width*j]+coloroffset)%colorPalette.length;
+            visibleContext.fillStyle=colorPalette[pixelIndex];
+            if (pixelIndex===bumperCol && bumperHit>=0){
+              if (regionCanvas[i+width*j]===bumperHit){
+                visibleContext.fillStyle=colorPalette[18];              
+              }
+            } 
+            visibleContext.fillRect(i*zoom,j*zoom,zoom,zoom);        
+          }
+        }
+        return;
       }
       for (var i=0;i<width;i++){
         for (var j=0;j<height;j++){
@@ -1272,7 +1320,6 @@ function ballCollides(){
           visibleContext.fillRect(i*zoom,j*zoom,zoom,zoom);        
         }
       }
-
 
       if (mag([speedX,speedY])>2) {
         var ballPoints=ballPointFrames[Math.floor(lastBallFrame)];
@@ -1345,7 +1392,7 @@ function ballCollides(){
       undoList.shift();
     }
 
-      if (shareLinkInner!==null){
+      if (shareLinkInner!=null){
         shareLinkInner.style.color="gray";
       }
   }
@@ -1796,10 +1843,11 @@ function exitPointDraw(x,y){
   }
 
   function compile(){
+    dirty=false;
     boundingBoxes = {};
     pivotPoints = {};
     exitTriggered=false;
-
+    
     for (var i=0;i<width*height;i++){
       regionCanvas[i]=0;
     }
@@ -2311,7 +2359,28 @@ function exitPointDraw(x,y){
       targetCanvas[px+width*py]=targetPivotCol;
 
     }
-    canvasIndex=3;
+  }
+
+  function cyclePalette(offset){
+    var colCount=colorPalette.length-1;
+
+    mainPaletteOffset = (mainPaletteOffset+colCount+offset)%colCount;
+    colorPalette = [];
+    for (var i=1;i<sourcePalette.length;i++){      
+      colorPalette[i]=sourcePalette[((i+mainPaletteOffset-1)%colCount)+1]
+    }
+    colorPalette[0]=colorPalette[1];
+
+
+    for (var i=0;i<16;i++){
+      elem = document.getElementById("color_"+(i)); 
+      if (elem!==null){       
+        elem.style.backgroundColor=colorPalette[i];
+        colorElem[i]=elem;
+      }
+    }
+
+    setVisuals();
   }
 
   function calcHalo(){
