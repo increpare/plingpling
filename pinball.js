@@ -1069,7 +1069,6 @@ function ballCollides(){
           avgx=-speedY;
           avgy=speedX;
         } else {
-          console.log(yep);                
           return;
         }  
       }
