@@ -1000,6 +1000,11 @@ function ballCollides(){
   var lastsoundpos_bump=-1;
   var oldscore=0;
   function tick(){
+
+    var tempsoundpos = Math.round(bpx)+1000*Math.round(bpy);
+    if (tempsoundpos!==lastsoundpos_bump){
+      lastsoundpos_bump=-1;
+    }
     if (oldscore!==score){
       // If the user has more points than the currently stored high score then
       if (score > highScore) {
@@ -1096,7 +1101,7 @@ function ballCollides(){
         playSound(targetsound,bumperCount===0);
       }
       lastsoundpos_bump=soundpos;
-      
+
       var direction = (nSpeed[0]*normal[1]-nSpeed[1]*normal[0]);
 /*      if (direction<0){
         console.log("left");
