@@ -1095,7 +1095,8 @@ function ballCollides(){
       if(soundpos!==lastsoundpos_bump){
         playSound(targetsound,bumperCount===0);
       }
-
+      lastsoundpos_bump=soundpos;
+      
       var direction = (nSpeed[0]*normal[1]-nSpeed[1]*normal[0]);
 /*      if (direction<0){
         console.log("left");
