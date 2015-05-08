@@ -1,7 +1,7 @@
  var contexts = new Array();
   var version="0.1";
   var gameTitle="My Game";
-  var gameLink="www.flipgame.org"
+  var gameLink="www.plingpling.org"
   var winText="Congratulations! You won!"
   var width=125;
   var height=140;
@@ -23,9 +23,10 @@
   var linkInput;
   var id;
   var id_d;
-
+  var loaded=false;
   var lastX=-1;
   var lastY=-1;
+  var shareLinkInner;
 
   var regionCanvasCount = 2;
   //canvas id 1 = empty space
@@ -333,7 +334,7 @@ function shareClick() {
 
       var shareLink = document.getElementById("shareLink");
       shareLink.innerHTML = "<a target=\"_blank\" href=\""+url+"\">&#8627;"+id+"</a><br>";
-
+      shareLinkInner = shareLink.childNodes[0];
 
       if (errorCount>0) {
         alert("Cannot link directly to playable game, because there are errors.",true);
@@ -347,7 +348,7 @@ function shareClick() {
   githubHTTPClient.setRequestHeader("Content-type","application/x-www-form-urlencoded");
   var stringifiedGist = JSON.stringify(gistToCreate);
   githubHTTPClient.send(stringifiedGist);
-    lastDownTarget=canvas;  
+  lastDownTarget=masterCanvas;  
 }
 
 function RLE_encode(input) {
@@ -415,6 +416,8 @@ function stringToState(str){
     canvasses.push(ar);
   }
 
+  masterCanvas =uint8ar_copy(canvasses[0]);
+  compile();
 }
 
 document.addEventListener("keydown", press);
@@ -606,7 +609,7 @@ function press(evt){
     setVisuals();
     setLayer(canvasIndex+1); 
   } */
-  if (evt.keyCode===80){//p
+  if (evt.keyCode===80 || evt.keyCode===82){//p
     compile();
     spawnBall();
   } else if (evt.keyCode===67) { //c
@@ -671,6 +674,9 @@ function press(evt){
       masterCanvas=dat.canvasDat;
       compile();
       setVisuals();
+      if (shareLinkInner!==null){
+        shareLinkInner.style.color="gray";
+      }
     }
   }
 
@@ -712,8 +718,8 @@ var colorElem = new Array();
 var ballSpawnPointX=width/2;
 var ballSpawnPointY=height/2;
 
-var bpx=-20;
-var bpy=-20;
+var bpx=-2000;
+var bpy=-2000;
 var ballFrame=0;
 var ballPointFrames = [
 [
@@ -940,6 +946,11 @@ function ballCollides(){
   var ballSpinSpeed=0.4;
   var bumperHit=-1;
   function tick(){
+    if (PLAYER&&loaded){
+      if (bpy<-500||bpy>height+5){
+        spawnBall();
+      }
+    }
     bumperHit=-1;
     var signum=ballSpin>0?1:-1;
     ballFrame=(((ballFrame+signum*Math.sqrt(Math.abs(ballSpin))*ballSpinSpeed)%4)+4)%4;
@@ -1136,6 +1147,7 @@ function ballCollides(){
         var decoded = decodeURI(ss2);
         var decoded2 = decoded.substring(0, decoded.length - 3);
         stringToState(decoded2);
+        loaded=true;
         setVisuals();
       }
       r.readAsText(f);
@@ -1170,7 +1182,7 @@ function ballCollides(){
       }
       homepageLink.href = homepage;
 
-      gameTitleHeader.innerHTML = gameTitle;
+      gameTitleHeader.innerText = gameTitle;
 
     }else{
         titleInput.value=gameTitle;
@@ -1186,6 +1198,7 @@ function ballCollides(){
       stringToState(embeddedDat);
       setVisuals();
       setTexts();
+      loaded=true;
       return;
     }
 
@@ -1201,8 +1214,10 @@ function ballCollides(){
 
     var url = "index.html?p="+id;
     url=qualifyURL(url);
-    hacklink.href=url;
-    hacklink.innerHTML="&sdotb; edit";
+    if (hacklink!=null){
+      hacklink.href=url;
+      hacklink.innerHTML="&sdotb; edit";
+    }
     
     var githubURL = 'https://api.github.com/gists/'+id;
 
@@ -1222,6 +1237,7 @@ function ballCollides(){
       var code=result["files"]["game.txt"]["content"];
       
       stringToState(code);
+      loaded=true;
       setVisuals();
     }
     githubHTTPClient.setRequestHeader("Content-type","application/x-www-form-urlencoded");
@@ -1328,6 +1344,10 @@ function ballCollides(){
     if (undoList.length>30){
       undoList.shift();
     }
+
+      if (shareLinkInner!==null){
+        shareLinkInner.style.color="gray";
+      }
   }
 
   function mouseDown(e){
@@ -1778,6 +1798,7 @@ function exitPointDraw(x,y){
   function compile(){
     boundingBoxes = {};
     pivotPoints = {};
+    exitTriggered=false;
 
     for (var i=0;i<width*height;i++){
       regionCanvas[i]=0;

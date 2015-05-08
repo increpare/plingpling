@@ -8,10 +8,10 @@ var embeddedDat="__EMBED__";
 <script src="rng.js"></script>
 <script src="sfxr.js"></script>
 <script src="pinball.js" > </script>
-<script src="editor.js" > </script>
+
 <link href="style.css" rel="stylesheet">
     <title>
-      pinballl
+      plingpling game maker
     </title>
   </head>
   <body onload="init();" ondragstart="return false;" ondrop="return false;">
@@ -26,13 +26,13 @@ var embeddedDat="__EMBED__";
                   <tr>
                     <td>
                       <center>
-                        <input width="640" style="border:2px solid gray;" onkeydown="event.stopPropagation();" value="game title"  id="titleInput" oninput="titleChange(this.value)" />
-                        <input width="640" style="border:2px solid gray;" onkeydown="event.stopPropagation();" value="www.flipgame.org"  id="linkInput" oninput="linkChange(this.value)" />
+                        <input title="Enter your game's title here" width="640" style="border:2px solid gray;" onkeydown="event.stopPropagation();" value="game title"  id="titleInput" oninput="titleChange(this.value)" />
+                        <input title="Enter a link here" width="640" style="border:2px solid gray;" onkeydown="event.stopPropagation();" value="www.plingpling.org"  id="linkInput" oninput="linkChange(this.value)" />
                         <br/>
                         <canvas id="mainCanvas" width="500" height="560" style="border:2px solid gray; background-color:black;"></canvas>
                         <br />
                         
-                        <input width="800" style="border:2px solid gray;" onkeydown="event.stopPropagation();" value="game win message"  id="winText" oninput="winTextChange(this.value)" />
+                        <input title="Enter the message the player should see when they win the game here" width="800" style="border:2px solid gray;" onkeydown="event.stopPropagation();" value="game win message"  id="winText" oninput="winTextChange(this.value)" />
                       </center>
                     </td>
                     <td valign="top">
