@@ -1,4 +1,7 @@
-var embeddedDat="__EMBED__";
+/**/
+var embeddedArray=["__EmbedBegin__","__EMBED__","__EmbedEnd__"]
+var embeddedDat=embeddedArray[1];
+/*__EmbedEnd__*/
 
 var PLAYER=true;
 

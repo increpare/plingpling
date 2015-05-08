@@ -53,9 +53,9 @@ var embeddedDat="__EMBED__";
                       
                       <table style="width:100%;">
                       <tr>
-                      <td style="text-align:center;width:20px;"><a href="#" onclick="cyclePalette(-1);return false;">&lt;</a></td>
-                      <td></td>
-                      <td style="text-align:center;width:20px;"><a href="#" onclick="cyclePalette(+1);return false;">&gt;</a></td>
+                      <td style="text-align:center;width:20px;"><a title="select color palette" href="#" onclick="cyclePalette(-1);return false;">&lt;</a></td>
+                      <td id="colorOffsetChoice"></td>
+                      <td style="text-align:center;width:20px;"><a title="select color palette"  href="#" onclick="cyclePalette(+1);return false;">&gt;</a></td>
                       </tr>
                       </table>
 
@@ -134,18 +134,18 @@ var embeddedDat="__EMBED__";
                         </tr>
                         <tr>
                           <td>
-                            <a href="#" onclick="selectTool('connection',connectionCol);return false;"><div class="unselected" id="color_9"></div></a>
-                          </td>
-                          <td colspan=2>
-                            connection
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>
                             <a href="#" onclick="selectTool('target',targetCol);return false;"><div class="unselected" id="color_10"></div></a>
                           </td>
                           <td colspan=2>
                             target
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <a href="#" onclick="selectTool('connection',connectionCol);return false;"><div class="unselected" id="color_9"></div></a>
+                          </td>
+                          <td colspan=2>
+                            connection
                           </td>
                         </tr>
                         <tr>

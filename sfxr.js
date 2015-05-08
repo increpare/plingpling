@@ -955,9 +955,10 @@ function cacheSeed(seed){
 }
 
 var lastSoundCoord=-1;
-function playSound(seed) {
+function playSound(seed,force) {
   var curCoord=Math.round(bpx)+100000*Math.round(bpy)+seed*1000;
-  if (curCoord===lastSoundCoord){
+  if (force===true){
+  }else if (curCoord===lastSoundCoord){
     return;
   }
   var sound = cacheSeed(seed);

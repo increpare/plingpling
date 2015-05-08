@@ -20,6 +20,9 @@
   var visibleContext;
   var titleInput;
   var linkInput;
+  var scoreText;
+  var highScoreText;
+  var winTextInput;
   var id;
   var id_d;
   var loaded=false;
@@ -27,6 +30,11 @@
   var lastY=-1;
   var shareLinkInner;
   var mainPaletteOffset=0;
+
+  var lastDrawPosX=-1;
+  var lastDrawPosY=-1;
+  var score=0;
+  var highScore = localStorage.getItem('highScore') || 0;
 
   var regionCanvasCount = 2;
   //canvas id 1 = empty space
@@ -513,11 +521,11 @@ function interpolateAreas(oldCanvasIndex,newCanvasIndex){
   var newDown = (Math.floor(newCanvasIndex/4))%2;
 
   if (oldDown===1&&newDown===0){
-    playSound(62826107);
+    playSound(62826107,true);
   } else if (oldDown===0&&newDown===1){
-    playSound(67535707);    
+    playSound(67535707,true);    
   } else if ((oldLeft===0&&newLeft===1) ||(oldRight===0&&newRight===1)){
-    playSound(64004107);
+    playSound(64004107,true);
   }
 
   var result = [oldCanvasIndex];
@@ -612,7 +620,15 @@ function press(evt){
     setVisuals();
     setLayer(canvasIndex+1); 
   } */
-  if (evt.keyCode===80 ){//p
+  if (evt.keyCode===188){
+    cyclePalette(-1);
+  } else if (evt.keyCode===190){
+    cyclePalette(1);
+  }
+  else if (evt.keyCode===38 && tilting===false){
+    playSound(72335902,true);
+  }
+  else if (evt.keyCode===80 ){//p
     compile();
     spawnBall();
   }  else if (evt.keyCode===82){
@@ -808,7 +824,7 @@ function ballCollides(){
     }
 
     if (connectionGroupIndex===-1){
-      playSound(89718103);
+      playSound(89718103,true);
       return;
     }
     activatedConnections.push(regionNumber);
@@ -835,9 +851,9 @@ function ballCollides(){
     }
     if (triggeredTriggers===foundTriggers){
       removeTogglableWalls(r);
-      playSound(66445903);
+      playSound(66445903,true);
     } else {
-      playSound(89718103);
+      playSound(89718103,true);
     }
   }
 
@@ -868,18 +884,30 @@ function ballCollides(){
     }
   }
 
+  var ballOffsets = [
+                          [1,0],[2,0],
+                    [0,1],[1,1],[2,1],[3,1],
+                    [0,2],[1,2],[2,2],[3,2],
+                          [1,3],[2,3]
+  ]
   function collision(x,y){
-    var indices = [
-                                x+1+width*(y+0),x+2+width*(y+0),
-                    x+0+width*(y+1),x+1+width*(y+1),x+2+width*(y+1),x+3+width*(y+1),
-                    x+0+width*(y+2),x+1+width*(y+2),x+2+width*(y+2),x+3+width*(y+2),
-                                x+1+width*(y+3),x+2+width*(y+3)
-                    ];
+
     var canvas=canvasses[canvasIndex];
 
     var collisiondat = [];
-    for (var i=0;i<indices.length;i++){
-      var index = indices[i];
+    for (var i=0;i<ballOffsets.length;i++){
+      var cp = ballOffsets[i];
+      var cpx=cp[0]+x;
+      var cpy=cp[1]+y;
+      if (cpx<0||cpx>=width||cpy<0){
+        var px = Math.floor(cpx)+0.5;
+        var py = Math.floor(cpy)+0.5;
+        var dx = px-x-2;
+        var dy = py-y-2;
+        collisiondat.push([wallCol,-dx,-dy])
+        continue;
+      }
+      var index = cpx+width*cpy;
       var val = canvas[index];
       if (val === targetCol){
         activateSwitch(index);
@@ -952,7 +980,18 @@ function ballCollides(){
   var ballSpinSpeed=0.4;
   var bumperHit=-1;
   var lastsoundpos_bump=-1;
+  var oldscore=0;
   function tick(){
+    if (oldscore!==score){
+      // If the user has more points than the currently stored high score then
+      if (score > highScore) {
+        // Set the high score to the users' current points
+        highScore = score;
+        // Store the high score
+        localStorage.setItem('highScore', highScore);
+      }
+      setScoreText();
+    }
     if (PLAYER&&loaded){
       if ((bpy<-500||bpy>height+5)&&exitTriggered===false){
         spawnBall();
@@ -966,12 +1005,12 @@ function ballCollides(){
     var oldSpeedY=speedY;
     var canvas=canvasses[canvasIndex];
     if (bpx<-10){
-      if (PLAYER&&exitTriggered){
+      if ((PLAYER&&exitTriggered) || (tilting===true)){
         setVisuals();
-      }
+      } 
       return;
     }
-    var G=0.001;
+    var G=0.002;
     speedY+=G*tickLength;
     clampSpeed();
     var nx = bpx+speedX;
@@ -1021,6 +1060,7 @@ function ballCollides(){
       var nSpeed = [-speedX,-speedY];
       var targetsound=67922907;
       if (bumperCount>0){
+        score+=200;
         targetsound=64236300;
         var speedMag=mag(nSpeed);
         speedMag+=bumperSpeed;
@@ -1036,7 +1076,7 @@ function ballCollides(){
 
       var soundpos = Math.round(bpx)+1000*Math.round(bpy);
       if(soundpos!==lastsoundpos_bump){
-        playSound(targetsound);
+        playSound(targetsound,bumperCount===0);
       }
 
       var direction = (nSpeed[0]*normal[1]-nSpeed[1]*normal[0]);
@@ -1113,6 +1153,9 @@ function ballCollides(){
         winTextInput=document.getElementById("winText");
         winTextInput.value=winText;
 
+        scoreText = document.getElementById("scoreText");
+        highScoreText = document.getElementById("highScoreText");
+        setScoreText();
 
         for (var i=0;i<16;i++){
           elem = document.getElementById("color_"+(i)); 
@@ -1121,12 +1164,15 @@ function ballCollides(){
             colorElem[i]=elem;
           }
         }
-
+        elem = document.getElementById("colorOffsetChoice");
+        if (elem!==null){
+            elem.style.backgroundColor=colorPalette[0];
+        }
       }
 
       visibleCanvas = document.getElementById("mainCanvas");
 
-      if (PLAYER===false){
+      if (!(PLAYER===true)){
         visibleCanvas.addEventListener('mousedown', mouseDown,false);
         visibleCanvas.addEventListener('mouseup', mouseUp,false);
         visibleCanvas.addEventListener('mousemove', mouseMove,false);
@@ -1155,15 +1201,15 @@ function ballCollides(){
       var r = new FileReader();
       r.onload = function(e) { 
         var contents = e.target.result;
-        var fromToken="<!--__EmbedBegin__-->";
-        var endToken="<!--__EmbedEnd__-->";
+        //escapes below are to get around searching for a pattern in its own file messing things up
+        var fromToken="\_\_EmbedBegin\_\_";
+        var endToken="\_\_EmbedEnd\_\_";
         var fromIndex=contents.indexOf(fromToken);
         var endIndex=contents.indexOf(endToken);
-        var ss1 = contents.substr(fromIndex+fromToken.length,endIndex-fromIndex-fromToken.length);
-        var ss2=ss1.substr(ss1.indexOf("=")+2);
-        var decoded = decodeURI(ss2);
-        var decoded2 = decoded.substring(0, decoded.length - 3);
-        stringToState(decoded2);
+        var ss1 = contents.substr(fromIndex+fromToken.length+2+1,(endIndex-2)-fromIndex-(fromToken.length+2)-2);
+        var decoded = decodeURI(ss1);
+        stringToState(decoded);
+        setTexts();
         loaded=true;
         setVisuals();
       }
@@ -1200,7 +1246,7 @@ function ballCollides(){
       homepageLink.href = homepage;
 
       gameTitleHeader.innerText = gameTitle;
-
+      document.title=gameTitle;
     }else{
         titleInput.value=gameTitle;
         linkInput.value=gameLink;
@@ -1254,6 +1300,7 @@ function ballCollides(){
       var code=result["files"]["game.txt"]["content"];
       
       stringToState(code);
+      setTexts();
       loaded=true;
       setVisuals();
     }
@@ -1291,7 +1338,7 @@ function ballCollides(){
         clampSpeed();
       }
 
-      if (exitTriggered){
+      if (exitTriggered && PLAYER===false){
         wonindex=(wonindex+1)%(colorPalette.length*15);
         var coloroffset=Math.floor(wonindex/15);
         for (var i=0;i<width;i++){
@@ -1583,6 +1630,16 @@ function leftFlipperPivotDraw(x,y){
     masterCanvas[px+width*py]=leftFlipperPivotCol;
   }
   neighbours=[[px+1,py],[px,py+1],[px-1,py],[px,py-1]];
+
+  for (var i=0;i<neighbours.length;i++){
+    var n = neighbours[i];
+    var nx=n[0];
+    var ny=n[1];
+    if (nx>=0&&nx<width&&ny>=0&&ny<height){
+      masterCanvas[nx+width*ny]=flipperCol;
+    }
+  }
+
   fillCanvas[px+width*py]=1;
   for(var i=0;i<neighbours.length;i++){
     var n = neighbours[i];
@@ -1619,6 +1676,17 @@ function rightFlipperPivotDraw(x,y){
     masterCanvas[px+width*py]=rightFlipperPivotCol;
   }
   neighbours=[[px+1,py],[px,py+1],[px-1,py],[px,py-1]];
+
+
+  for (var i=0;i<neighbours.length;i++){
+    var n = neighbours[i];
+    var nx=n[0];
+    var ny=n[1];
+    if (nx>=0&&nx<width&&ny>=0&&ny<height){
+      masterCanvas[nx+width*ny]=flipperCol;
+    }
+  }
+  
   fillCanvas[px+width*py]=1;
   for(var i=0;i<neighbours.length;i++){
     var n = neighbours[i];
@@ -1809,7 +1877,10 @@ function exitPointDraw(x,y){
     var x = Math.floor(-1+coords[0]/zoomFactor);
     var y = Math.floor(-1+coords[1]/zoomFactor);
 
-
+    if (keyBuffer[16]){
+      lastX=lastDrawPosX;
+      lastY=lastDrawPosY;
+    }
 
     var points;
     if (interpolateBrush[activeTool]===false||lastX<0||lastY<0) {
@@ -1840,6 +1911,12 @@ function exitPointDraw(x,y){
     lastX=Math.floor(-1+coords[0]/zoomFactor);
     lastY=Math.floor(-1+coords[1]/zoomFactor);
     
+    lastDrawPosX=x;
+    lastDrawPosY=y;
+
+    if (canvasIndex!==0){
+      compile();
+    }
   }
 
   function compile(){
@@ -1914,13 +1991,22 @@ function exitPointDraw(x,y){
     setVisuals();
   }
 
+  function setScoreText(){
+    if(PLAYER===true){
+      scoreText.innerText=score;
+      highScoreText.innerText=highScore;
+    }
+    oldscore=score;
+  }
   function spawnBall(){
+    score=0;
+    setScoreText();
     bpx=ballSpawnPointX;
     bpy=ballSpawnPointY;
     ballSpin=0;
     speedX=0;
     speedY=0;
-    playSound(43637308);
+    playSound(43637308,true);
   }
 
   function fillRegion(x,y,regionNumber){
@@ -2378,6 +2464,10 @@ function exitPointDraw(x,y){
         elem.style.backgroundColor=colorPalette[i];
         colorElem[i]=elem;
       }
+    }
+    elem = document.getElementById("colorOffsetChoice");
+    if (elem!==null){
+        elem.style.backgroundColor=colorPalette[0];
     }
 
     setVisuals();
