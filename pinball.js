@@ -34,7 +34,7 @@
   var lastDrawPosX=-1;
   var lastDrawPosY=-1;
   var score=0;
-  var highScore = localStorage.getItem('highScore') || 0;
+  var highScore =  0;
 
   var regionCanvasCount = 2;
   //canvas id 1 = empty space
@@ -400,12 +400,24 @@ function stateToString(){
   return result;
 }
 
+function findPageName() {
+  var path = window.location.href;
+  return path;
+}
+
+
+function makeKey(key){
+  return findPageName() + key;
+}
+
 function stringToState(str){
   var state = JSON.parse(str);
   gameTitle=state.gameTitle;
   winText=state.winText;
   gameLink=state.gameLink;
     mainPaletteOffset=0;
+    var k = localStorage.getItem(makeKey('highScore'));
+    highScore = k | 0;
   if ("mainPaletteOffset" in state){
     cyclePalette(state.mainPaletteOffset);
   } else {
@@ -429,6 +441,7 @@ function stringToState(str){
 
   masterCanvas =uint8ar_copy(canvasses[0]);
   compile();
+  setScoreText(true);
 }
 
 document.addEventListener("keydown", press);
@@ -1011,7 +1024,7 @@ function ballCollides(){
         // Set the high score to the users' current points
         highScore = score;
         // Store the high score
-        localStorage.setItem('highScore', highScore);
+        localStorage.setItem(makeKey('highScore'), highScore);
       }
       setScoreText();
     }
@@ -1160,6 +1173,7 @@ function ballCollides(){
       playSound(81031108);
       canvasIndex=0;
       alert(winText + "\n score : "+score);
+      setScoreText(true);
     }
     setVisuals();
   }
@@ -1215,6 +1229,7 @@ function ballCollides(){
       setVisuals();
 
       getData();
+      setScoreText(true);
     }
 
   function readFile(evt) {
@@ -2035,16 +2050,18 @@ function exitPointDraw(x,y){
     setVisuals();
   }
 
-  function setScoreText(){
+  function setScoreText(includeHighScore){
     if(PLAYER===true){
       scoreText.innerText=score;
-      highScoreText.innerText=highScore;
+      if (includeHighScore===true){
+        highScoreText.innerText=highScore;
+      }
     }
     oldscore=score;
   }
   function spawnBall(){
     score=0;
-    setScoreText();
+    setScoreText(true);
     bpx=ballSpawnPointX;
     bpy=ballSpawnPointY;
     ballSpin=0;
