@@ -510,6 +510,10 @@ function applyCanvasSweep(sweepArea){
 */
 }
 
+var hasLeftPaddle=true;
+var hasRightPaddle=true;
+var hasSpring=true;
+
 function interpolateAreas(oldCanvasIndex,newCanvasIndex){
   var oldLeft = oldCanvasIndex%2;
   var newLeft = newCanvasIndex%2;
@@ -521,12 +525,23 @@ function interpolateAreas(oldCanvasIndex,newCanvasIndex){
   var newDown = (Math.floor(newCanvasIndex/4))%2;
 
   if (oldDown===1&&newDown===0){
-    playSound(62826107,true);
+    if (hasSpring){
+      playSound(62826107,true);
+    }
   } else if (oldDown===0&&newDown===1){
-    playSound(67535707,true);    
-  } else if ((oldLeft===0&&newLeft===1) ||(oldRight===0&&newRight===1)){
-    playSound(64004107,true);
+    if (hasSpring){
+      playSound(67535707,true);    
+    }
+  } else if ((oldLeft===0&&newLeft===1)){
+    if (hasLeftPaddle){
+      playSound(64004107,true);
+    } 
+  }else if (oldRight===0&&newRight===1){
+      if (hasRightPaddle){
+        playSound(64004107,true);
+      }
   }
+  
 
   var result = [oldCanvasIndex];
   if (oldLeft!=newLeft){
@@ -1992,6 +2007,26 @@ function exitPointDraw(x,y){
     scrunchSprings();
     generateSweepOffsets();
     makeConnections();
+
+
+    hasLeftPaddle=false;
+    hasRightPaddle=false;
+    hasSpring=false;
+
+    for (var i in pivotPoints){
+      var ppoint = pivotPoints[i];
+      if (ppoint[2]===1){
+        hasLeftPaddle=true;
+      } else if (ppoint[2]===2){
+        hasRightPaddle=true;
+      }
+    }
+    for (var i=0;i<regionTypes.length;i++){
+      if (regionTypes[i]===springCol){
+        hasSpring=true;
+      }
+    }
+
     setVisuals();
   }
 
