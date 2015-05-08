@@ -1,0 +1,23 @@
+#!/bin/bash 
+echo ===========================
+start=`date +%s`
+rm -rf bin
+mkdir bin
+echo inlining standalone template
+inliner play.html > bin/play_inlined.txt
+echo copying files
+cp gzipper bin/
+cp -r *.* bin/
+cp .htaccess ../bin/
+echo compressing html
+java -jar ~/progs/htmlcompressor-1.5.3.jar  -r bin/ -o bin/
+echo gzipping site
+cd bin
+./gzipper
+rm gzipper
+cd ..
+end=`date +%s`
+runtime=$((end-start))
+echo script took $runtime seconds
+echo ===========================
+
