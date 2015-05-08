@@ -1143,7 +1143,11 @@ function ballCollides(){
     function init() {
       setInterval(tick, tickLength);
 
-      if (PLAYER===false){
+      if (PLAYER===true){        
+        scoreText = document.getElementById("scoreText");
+        highScoreText = document.getElementById("highScoreText");
+        setScoreText();
+      } else {
         titleInput=document.getElementById("titleInput");
         titleInput.value=gameTitle;
 
@@ -1152,10 +1156,6 @@ function ballCollides(){
 
         winTextInput=document.getElementById("winText");
         winTextInput.value=winText;
-
-        scoreText = document.getElementById("scoreText");
-        highScoreText = document.getElementById("highScoreText");
-        setScoreText();
 
         for (var i=0;i<16;i++){
           elem = document.getElementById("color_"+(i)); 
@@ -1168,7 +1168,7 @@ function ballCollides(){
         if (elem!==null){
             elem.style.backgroundColor=colorPalette[0];
         }
-      }
+      } 
 
       visibleCanvas = document.getElementById("mainCanvas");
 
