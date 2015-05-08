@@ -248,13 +248,13 @@ function connectCables(region1,region2){
   if (r2===null){
     r2=[region2];
   } else {
-    connections.splice(r2,1);
+    connections.splice(r2i,1);
   }
 
   if (r1===null){
     r1=[region1];
   } else{  
-    connections.splice(r1,1);
+    connections.splice(r1i,1);
   }
 
   connections.push(r1.concat(r2).unique());
