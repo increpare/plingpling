@@ -1201,9 +1201,11 @@ function ballCollides(){
         winTextInput=document.getElementById("winText");
         winTextInput.value=winText;
 
-        for (var i=0;i<16;i++){
-          elem = document.getElementById("color_"+(i)); 
+        var coloredElements = document.querySelectorAll("[id^=color_]");
+        for(var queryIndex = 0; queryIndex < coloredElements.length; queryIndex ++){
+          var elem = coloredElements[queryIndex];
           if (elem!==null){       
+            var i = Number(elem.id.match(/color_([0-9]+)/)[1]);
             elem.style.backgroundColor=colorPalette[i];
             colorElem[i]=elem;
           }
@@ -1526,12 +1528,11 @@ function ballCollides(){
   var activeTool="wall";
   function selectTool(toolName,col){
     activeTool=toolName;
-    for (var i=0;i<16;i++){
-      var elem = colorElem[i];
-      if (elem!=null){
+    colorElem.forEach(function (elem){
+      if(elem){
         elem.setAttribute("class","unselected");
       }
-    }
+    });
     colorElem[col].setAttribute("class","selected");
   }
 
@@ -2525,9 +2526,11 @@ function exitPointDraw(x,y){
     colorPalette[0]=colorPalette[1];
 
 
-    for (var i=0;i<16;i++){
-      elem = document.getElementById("color_"+(i)); 
+    var coloredElements = document.querySelectorAll("[id^=color_]");
+    for(var queryIndex = 0; queryIndex < coloredElements.length; queryIndex ++){
+      var elem = coloredElements[queryIndex];
       if (elem!==null){       
+        var i = Number(elem.id.match(/color_([0-9]+)/)[1]);
         elem.style.backgroundColor=colorPalette[i];
         colorElem[i]=elem;
       }
