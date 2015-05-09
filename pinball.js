@@ -636,8 +636,8 @@ function press(evt){
   evt = evt || window.event;
   keyBuffer[evt.keyCode]=true;
 
-  if ([32, 37, 38, 39, 40].indexOf(event.keyCode) > -1) {
-    prevent(event);
+  if ([32, 37, 38, 39, 40].indexOf(evt.keyCode) > -1) {
+    prevent(evt);
   }
 
   /*
@@ -1167,6 +1167,8 @@ function ballCollides(){
     var bpyr=Math.round(bpy);
     if (exitTriggered ===false && bpxr<=exitPointX&&exitPointX<=bpxr+4 && bpyr<=exitPointY&&exitPointY<=bpyr+4 ){
       exitTriggered=true;
+      tilting=false;
+      keyBuffer[38]=false;
       wonindex=13;
       bpx=-1000;
       bpy=-1000;      
