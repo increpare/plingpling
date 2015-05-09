@@ -4,6 +4,14 @@ http://www.plingpling.org
 
 ----
 
+COMPILATION GUIDE
+
+you can kinda run it locally by downloading files, but if you want to build a version fully working, with the export feature, you need to install some extra software - it uses a modified version of my puzzlescript scripts, so these instructions should help - 
+
+https://groups.google.com/forum/#!searchin/puzzlescript/development/puzzlescript/yptIpY9hlng/cjfrOPy_4jcJ
+
+----
+
 # plingpling
 
 The MIT License (MIT)
