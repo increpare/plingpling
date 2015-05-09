@@ -9,7 +9,7 @@ inliner -n play.html > play_inlined.txt
 echo copying files
 cp gzipper bin/
 cp -r *.* bin/
-cp .htaccess ../bin/
+cp .htaccess bin/
 echo compressing html
 java -jar ~/progs/htmlcompressor-1.5.3.jar  -r bin/ -o bin/
 echo gzipping site
