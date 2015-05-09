@@ -761,6 +761,10 @@ function clearPalette(){
       basicCanvas[i]=masterCanvas[i];
     }
 
+  // prevent drawing of lastball after clear
+  speedX = 0;
+  speedY = 0;
+
   setVisuals();
 }
 
