@@ -261,6 +261,11 @@ function connectCables(region1,region2){
 }
 
 function makeConnections(){
+
+  function conducts(col){
+    return col === connectionCol || col === targetCol || col === togglableWallCol || col === togglableWallDisabledCol;
+  }
+
   var canvas=masterCanvas;
   connections=[];
   activatedConnections=[];
@@ -268,8 +273,7 @@ function makeConnections(){
     for (var j=0;j<height-1;j++){
       var index=i+width*j;
       var v1=canvas[index];
-      var v1Conducts = v1 === connectionCol || v1 === targetCol || v1 === togglableWallCol;
-      if (v1Conducts===false){
+      if (conducts(v1) === false){
         continue;
       }
 
@@ -284,12 +288,10 @@ function makeConnections(){
       var v2=canvas[rightIndex];
       var v3=canvas[belowIndex];
 
-      var v2Conducts = v2 === connectionCol || v2 === targetCol || v2 === togglableWallCol;
-      var v3Conducts = v3 === connectionCol || v3 === targetCol || v3 === togglableWallCol;
-      if (v2Conducts && mainRegion!==rightRegion) {
+      if (conducts(v2) && mainRegion!==rightRegion) {
         connectCables(mainRegion,rightRegion);
       }
-      if (v3Conducts && rightRegion!==belowRegion && mainRegion!==belowRegion){
+      if (conducts(v3) && rightRegion!==belowRegion && mainRegion!==belowRegion){
         connectCables(mainRegion,belowRegion);
       }
     }
@@ -761,6 +763,10 @@ function clearPalette(){
       basicCanvas[i]=masterCanvas[i];
     }
 
+  // prevent drawing of lastball after clear
+  speedX = 0;
+  speedY = 0;
+
   setVisuals();
 }
 
@@ -893,7 +899,7 @@ function ballCollides(){
     for (var i=0;i<row.length;i++){
       var rowRegionNum = row[i];
       var type = regionTypes[rowRegionNum];
-      if (type !== togglableWallCol){
+      if (!(type === togglableWallCol || type === togglableWallDisabledCol)){
         continue;
       }
 
@@ -907,6 +913,8 @@ function ballCollides(){
               var canvas=canvasses[j];
               if (canvas[index]===togglableWallCol){
                 canvas[index]=togglableWallDisabledCol;
+              } else if (canvas[index]===togglableWallDisabledCol){
+                canvas[index]=togglableWallCol;
               }
             }
           }
@@ -1197,9 +1205,11 @@ function ballCollides(){
         winTextInput=document.getElementById("winText");
         winTextInput.value=winText;
 
-        for (var i=0;i<16;i++){
-          elem = document.getElementById("color_"+(i)); 
+        var coloredElements = document.querySelectorAll("[id^=color_]");
+        for(var queryIndex = 0; queryIndex < coloredElements.length; queryIndex ++){
+          var elem = coloredElements[queryIndex];
           if (elem!==null){       
+            var i = Number(elem.id.match(/color_([0-9]+)/)[1]);
             elem.style.backgroundColor=colorPalette[i];
             colorElem[i]=elem;
           }
@@ -1522,12 +1532,11 @@ function ballCollides(){
   var activeTool="wall";
   function selectTool(toolName,col){
     activeTool=toolName;
-    for (var i=0;i<16;i++){
-      var elem = colorElem[i];
-      if (elem!=null){
+    colorElem.forEach(function (elem){
+      if(elem){
         elem.setAttribute("class","unselected");
       }
-    }
+    });
     colorElem[col].setAttribute("class","selected");
   }
 
@@ -1832,6 +1841,18 @@ function togglableWallDraw(x,y){
   }   
 }
 
+function togglableWallDisabledDraw(x,y){
+  var points = [[x,y],[x-1,y],[x,y+1],[x+1,y],[x,y-1]];
+
+  for (var i=0;i<points.length;i++){
+    var px=points[i][0];
+    var py=points[i][1];
+    if (px>=0&&px<width&&py>=0&&py<height){
+      masterCanvas[px+width*py]=togglableWallDisabledCol;
+    }
+  }   
+}
+
 function springDraw(x,y){
   var points = [[x,y],[x-1,y],[x,y+1],[x+1,y],[x,y-1]];
 
@@ -1888,6 +1909,7 @@ function exitPointDraw(x,y){
     connection: true,
     target: true,
     togglableWall: true,
+    togglableWallDisabled: true,
     spring: true,
     exitPoint: false
   }
@@ -1903,6 +1925,7 @@ function exitPointDraw(x,y){
     connection: connectionDraw,
     target: targetDraw,
     togglableWall: togglableWallDraw,
+    togglableWallDisabled: togglableWallDisabledDraw,
     spring: springDraw,
     exitPoint: exitPointDraw
   }
@@ -2521,9 +2544,11 @@ function exitPointDraw(x,y){
     colorPalette[0]=colorPalette[1];
 
 
-    for (var i=0;i<16;i++){
-      elem = document.getElementById("color_"+(i)); 
+    var coloredElements = document.querySelectorAll("[id^=color_]");
+    for(var queryIndex = 0; queryIndex < coloredElements.length; queryIndex ++){
+      var elem = coloredElements[queryIndex];
       if (elem!==null){       
+        var i = Number(elem.id.match(/color_([0-9]+)/)[1]);
         elem.style.backgroundColor=colorPalette[i];
         colorElem[i]=elem;
       }
