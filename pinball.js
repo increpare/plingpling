@@ -799,7 +799,9 @@ function press(evt){
   } else if (evt.keyCode===90){//z
     if (undoList.length>0){
       var dat = undoList.pop();
-      masterCanvas=dat.canvasDat;
+      for(var i = 0; i < dat.canvasDat.length; i++){
+        masterCanvas[i] = dat.canvasDat[i];
+      }
       compile();
       setVisuals(true);
       if (shareLinkInner!=null){
