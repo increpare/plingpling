@@ -7,10 +7,14 @@
   var height=140;
   var zoomFactor=4;
   var radius=5;
+  var stateIndex=0;
   var canvasIndex=0;
+  var levelCanvasses = new Array();
   var canvasses = new Array();
+  var VERSION=2;
   for (var i=0;i<16;i++){
     canvasses[i] = new Uint8Array(width*height);
+    levelCanvasses[i] = new Uint8Array(width*height);
   }
   var dirty=false;
   var exitTriggered=false;
@@ -30,7 +34,7 @@
   var lastY=-1;
   var shareLinkInner;
   var mainPaletteOffset=0;
-
+  var layerCount=6;
   var lastDrawPosX=-1;
   var lastDrawPosY=-1;
   var score=0;
@@ -45,7 +49,7 @@
   var regionTypes = [];
 
   var masterCanvas = new Uint8Array(width*height);
-
+  var gameLevelCount=1;
   
 
 /*
@@ -95,6 +99,10 @@
             ];
 
   var colorPalette = sourcePalette;
+
+    var layerElem = new Array();
+  var thumbnailCanvas = new Array();
+  var thumbnailContext = new Array();
 
 var eraserCol=0;
 var wallCol=2;
@@ -385,10 +393,12 @@ function stateToString(){
   state.gameTitle=gameTitle;
   state.winText=winText;
   state.gameLink=gameLink;
+  state.canvasIndex=canvasIndex;
   state.canvasses=new Array();
   state.mainPaletteOffset=mainPaletteOffset;
+  state.version=VERSION;
   for (var i=0;i<16;i++){
-    var canvas=canvasses[i];
+    var canvas=levelCanvasses[i];
     var s="";
     for (var j=0;j<width*height;j++){
       s+=canvas[j].toString(16);
@@ -415,6 +425,11 @@ function stringToState(str){
   gameTitle=state.gameTitle;
   winText=state.winText;
   gameLink=state.gameLink;
+  version = state.version;
+  if (state.version==null){
+    state.version=1;
+  }
+
     mainPaletteOffset=0;
     var k = localStorage.getItem(makeKey('highScore'));
     highScore = k | 0;
@@ -422,8 +437,14 @@ function stringToState(str){
     cyclePalette(state.mainPaletteOffset);
   } else {
   }
-  canvasIndex=0;
-  canvasses=new Array();
+  stateIndex=0;
+
+  canvasIndex = state.canvasIndex;
+  if (canvasIndex==null){
+    canvasIndex = 0;
+  }
+
+  levelCanvasses = new Array();
   for (var k=0;k<state.canvasses.length;k++){
     var s = state.canvasses[k];
     var ar = new Uint8Array(width*height);
@@ -436,10 +457,11 @@ function stringToState(str){
         index++;
       }
     }
-    canvasses.push(ar);
+    levelCanvasses.push(ar);
   }
 
-  masterCanvas =uint8ar_copy(canvasses[0]);
+  setLevel(1);
+  stateIndex=0;
   compile();
   setScoreText(true);
 }
@@ -527,15 +549,15 @@ var hasLeftPaddle=true;
 var hasRightPaddle=true;
 var hasSpring=true;
 
-function interpolateAreas(oldCanvasIndex,newCanvasIndex){
-  var oldLeft = oldCanvasIndex%2;
-  var newLeft = newCanvasIndex%2;
+function interpolateAreas(oldstateIndex,newstateIndex){
+  var oldLeft = oldstateIndex%2;
+  var newLeft = newstateIndex%2;
 
-  var oldRight = (Math.floor(oldCanvasIndex/2))%2;
-  var newRight = (Math.floor(newCanvasIndex/2))%2;
+  var oldRight = (Math.floor(oldstateIndex/2))%2;
+  var newRight = (Math.floor(newstateIndex/2))%2;
 
-  var oldDown = (Math.floor(oldCanvasIndex/4))%2;
-  var newDown = (Math.floor(newCanvasIndex/4))%2;
+  var oldDown = (Math.floor(oldstateIndex/4))%2;
+  var newDown = (Math.floor(newstateIndex/4))%2;
 
   if (oldDown===1&&newDown===0){
     if (hasSpring){
@@ -556,7 +578,7 @@ function interpolateAreas(oldCanvasIndex,newCanvasIndex){
   }
   
 
-  var result = [oldCanvasIndex];
+  var result = [oldstateIndex];
   if (oldLeft!=newLeft){
     var newItem = result[result.length-1]-oldLeft+newLeft;
     result.push(newItem);
@@ -572,12 +594,12 @@ function interpolateAreas(oldCanvasIndex,newCanvasIndex){
   return result;
 }
 
-function setCanvasIndex(oldCanvasIndex,newCanvasIndex){
+function setstateIndex(oldstateIndex,newstateIndex){
   if (dirty){
     compile();
   }
 
-  var steps = interpolateAreas(oldCanvasIndex,newCanvasIndex);
+  var steps = interpolateAreas(oldstateIndex,newstateIndex);
   for (var i=0;i<steps.length-1;i++){
     var source = steps[i];
     var target = steps[i+1];
@@ -585,7 +607,7 @@ function setCanvasIndex(oldCanvasIndex,newCanvasIndex){
     var sweepArea =  sweepAreas[source][target];
 
     if (sweepArea==null){
-      console.log( "setCanvasIndex not found " + source+" -> " + target );
+      console.log( "setstateIndex not found " + source+" -> " + target );
       return;
     } 
 
@@ -596,21 +618,21 @@ function setCanvasIndex(oldCanvasIndex,newCanvasIndex){
 var tilting=false;
 
 function setFlipperCanvas(){  
-  var oldCanvasIndex=canvasIndex;
-  canvasIndex=0;
+  var oldstateIndex=stateIndex;
+  stateIndex=0;
   if (keyBuffer[37]===true){//left
-    canvasIndex=1;
+    stateIndex=1;
   } 
   if (keyBuffer[39]===true){//right
-    canvasIndex+=2;
+    stateIndex+=2;
   }
   if (keyBuffer[40]===true){//down
-    canvasIndex+=4;
+    stateIndex+=4;
   }
   tilting = keyBuffer[38];//up
 
-  if (oldCanvasIndex!=canvasIndex){
-    setCanvasIndex(oldCanvasIndex,canvasIndex);
+  if (oldstateIndex!=stateIndex){
+    setstateIndex(oldstateIndex,stateIndex);
     //38 is up
     //40 is down
     setVisuals();
@@ -632,6 +654,49 @@ function prevent(e) {
 }
 
 
+function setLevel(newCanvasIndex) {
+
+  canvasIndex=newCanvasIndex-1;
+  masterCanvas=levelCanvasses[canvasIndex];
+
+  if (PLAYER!==true){
+    for(var i=0;i<layerCount;i++){
+      if (layerElem[i]!==null){
+        layerElem[i].setAttribute("class","layerItem");
+      }
+    }
+    layerElem[canvasIndex].setAttribute("class","layerItem selectedItem");
+  }
+
+  compile();
+  setVisuals();
+}
+
+function drawThumbnail(n){
+  thumbCtx=thumbnailContext[n];
+  thumbCtx.fillStyle="#FF0000";
+  thumbCtx.fillRect(0,0,16,10);
+  var canvas=levelCanvasses[n];
+  for (var i=0;i<25;i++){
+    for (var j=0;j<28;j++){
+      var max=0;
+      for (var i2=0;i2<10;i2++){              
+        for (var j2=0;j2<10;j2++){
+            var sample = canvas[i*5+i2+width*(j*5+j2)];
+            if (sample>max){
+              max=sample;
+            }
+        }
+      }
+      thumbCtx.fillStyle=colorPalette[max];
+      thumbCtx.fillRect(i,j,1,1);          
+    }
+  }
+
+//      var dataUrl = thumbnailCanvas[n].toDataURL();
+//      "dropdownOption"[0][0].style.backgroundImage="url("+dataUrl+")";
+}
+
 function press(evt){
   evt = evt || window.event;
   keyBuffer[evt.keyCode]=true;
@@ -646,7 +711,7 @@ function press(evt){
   } else if (evt.keyCode==76){//L(oad)
     stringToState(savedString);
     setVisuals();
-    setLayer(canvasIndex+1); 
+    setLevel(stateIndex+1); 
   } */
   if (evt.keyCode===188){
     cyclePalette(-1);
@@ -666,7 +731,7 @@ function press(evt){
     spawnBall();
   }else if (evt.keyCode===67) { //c
     copyImage=JSON.stringify(masterCanvas);
-    //copyImage=JSON.stringify(canvasses[canvasIndex])
+    //copyImage=JSON.stringify(canvasses[stateIndex])
   } else if (evt.keyCode===86){ //v
     if (copyImage!==null){
       preserveUndoState();
@@ -677,7 +742,7 @@ function press(evt){
       }
       masterCanvas=arui8;
       compile();
-      setVisuals();
+      setVisuals(true);
     }
   } else if (evt.keyCode ===189 || evt.keyCode===173 ) {//-
     var datArray = ['eraser', eraserCol,
@@ -725,7 +790,7 @@ function press(evt){
       var dat = undoList.pop();
       masterCanvas=dat.canvasDat;
       compile();
-      setVisuals();
+      setVisuals(true);
       if (shareLinkInner!=null){
         shareLinkInner.style.color="gray";
       }
@@ -760,8 +825,11 @@ function clearPalette(){
     for (var i=0;i<basicCanvas.length;i++){
       basicCanvas[i]=masterCanvas[i];
     }
-
-  setVisuals();
+    bpx=-1000;
+    bpy=-1000;
+    speedX=0;
+    speedY=0;
+  setVisuals(true);
 }
 
 
@@ -810,7 +878,7 @@ function ballCollides(){
                   x+0+width*(y+2),x+1+width*(y+2),x+2+width*(y+2),x+3+width*(y+2),
                               x+1+width*(y+3),x+2+width*(y+3)
                   ];
-  var canvas=canvasses[canvasIndex];
+  var canvas=canvasses[stateIndex];
 
   for (var i=0;i<indices.length;i++){
     var index = indices[i];
@@ -920,10 +988,10 @@ function ballCollides(){
                     [0,1],[1,1],[2,1],[3,1],
                     [0,2],[1,2],[2,2],[3,2],
                           [1,3],[2,3]
-  ]
+  ];
   function collision(x,y){
 
-    var canvas=canvasses[canvasIndex];
+    var canvas=canvasses[stateIndex];
 
     var collisiondat = [];
     for (var i=0;i<ballOffsets.length;i++){
@@ -1039,7 +1107,7 @@ function ballCollides(){
 
     var oldSpeedX=speedX;
     var oldSpeedY=speedY;
-    var canvas=canvasses[canvasIndex];
+    var canvas=canvasses[stateIndex];
     if (bpx<-10){
       if ((PLAYER&&exitTriggered) || (tilting===true)){
         setVisuals();
@@ -1166,16 +1234,20 @@ function ballCollides(){
     var bpxr=Math.round(bpx);
     var bpyr=Math.round(bpy);
     if (exitTriggered ===false && bpxr<=exitPointX&&exitPointX<=bpxr+4 && bpyr<=exitPointY&&exitPointY<=bpyr+4 ){
-      exitTriggered=true;
+      if(canvasIndex+1<gameLevelCount){
+        setLevel(canvasIndex+2);
+        spawnBall();
+      } else {
+        exitTriggered=true;
+        wonindex=13;
+        bpx=-1000;
+        bpy=-1000;     
+        alert(winText + "\n score : "+score);
+        setScoreText(true);
+        playSound(81031108);
+      }
       tilting=false;
-      keyBuffer[38]=false;
-      wonindex=13;
-      bpx=-1000;
-      bpy=-1000;      
-      playSound(81031108);
-      canvasIndex=0;
-      alert(winText + "\n score : "+score);
-      setScoreText(true);
+      keyBuffer[38]=false; 
     }
     setVisuals();
   }
@@ -1193,6 +1265,17 @@ function ballCollides(){
 
         linkInput=document.getElementById("linkInput");
         linkInput.value=gameLink;
+
+        for (var i=0;i<layerCount;i++){
+          elem = document.getElementById("thumbnail"+(i+1));        
+          thumbnailCanvas[i]=elem;
+          thumbnailContext[i]=elem.getContext("2d");
+        }
+
+        for (var i=0;i<layerCount;i++){
+          elem = document.getElementById("layerItem"+(i+1));        
+          layerElem[i]=elem;
+        }
 
         winTextInput=document.getElementById("winText");
         winTextInput.value=winText;
@@ -1228,7 +1311,8 @@ function ballCollides(){
       visibleContext.imageSmoothingEnabled= false;
       id = visibleContext.createImageData(1,1); // only do this once per page
       id_d=id.data;
-      setVisuals();
+      setLevel(1);
+      setVisuals(true);
 
       getData();
       setScoreText(true);
@@ -1252,7 +1336,8 @@ function ballCollides(){
         stringToState(decoded);
         setTexts();
         loaded=true;
-        setVisuals();
+        setLevel(canvasIndex+1); 
+        setVisuals(true,true);
       }
       r.readAsText(f);
     } else { 
@@ -1300,7 +1385,7 @@ function ballCollides(){
       embeddedDat=decodeURI(embeddedDat);
 
       stringToState(embeddedDat);
-      setVisuals();
+      setVisuals(true,true);
       setTexts();
       loaded=true;
       return;
@@ -1343,7 +1428,7 @@ function ballCollides(){
       stringToState(code);
       setTexts();
       loaded=true;
-      setVisuals();
+      setVisuals(true,true);
     }
     githubHTTPClient.setRequestHeader("Content-type","application/x-www-form-urlencoded");
     githubHTTPClient.send();
@@ -1356,7 +1441,7 @@ function ballCollides(){
 
   var wonindex=4;
 
-    function setVisuals(){
+    function setVisuals(genAnyThumbnails, genAllThumbnails){
       if (PLAYER&&loaded===false){
         visibleContext.fillStyle="#ff0000";
         visibleContext.fillRect(0,0,visibleCanvas.width/2,visibleCanvas.height/2);
@@ -1368,9 +1453,9 @@ function ballCollides(){
         visibleContext.fillRect(visibleCanvas.width/2,visibleCanvas.height/2,visibleCanvas.width/2,visibleCanvas.height/2);
         return;
       }
-      //visibleContext.drawImage(canvasses[canvasIndex], 0, 0); 
-      //visibleContext.drawImage(canvasses[canvasIndex], 0, 0,width*zoomFactor,height*zoomFactor); 
-      var canvas=canvasses[canvasIndex];
+      //visibleContext.drawImage(canvasses[stateIndex], 0, 0); 
+      //visibleContext.drawImage(canvasses[stateIndex], 0, 0,width*zoomFactor,height*zoomFactor); 
+      var canvas=canvasses[stateIndex];
       var zoom = zoomFactor;
       if (tilting){
         zoom-=Math.random()*0.1;
@@ -1435,6 +1520,16 @@ function ballCollides(){
         winTextInput.value=winText;
       }
       lastBallFrame=Math.floor(ballFrame);
+
+      if (PLAYER!==true&&genAnyThumbnails===true){
+        if (genAllThumbnails===true){
+          for (var i=0;i<layerCount;i++){
+            drawThumbnail(i);                    
+          }
+        } else {
+            drawThumbnail(canvasIndex);
+        }      
+      }
     }
 
 
@@ -1946,7 +2041,7 @@ function exitPointDraw(x,y){
     context.lineWidth = 0;
     context.fillStyle = 'green';
     context.fill();*/
-    setVisuals();
+    setVisuals(true);
 
     var coords = getCoords(e);
     lastX=Math.floor(-1+coords[0]/zoomFactor);
@@ -1955,7 +2050,7 @@ function exitPointDraw(x,y){
     lastDrawPosX=x;
     lastDrawPosY=y;
 
-    if (canvasIndex!==0){
+    if (stateIndex!==0){
       compile();
     }
   }
@@ -2049,7 +2144,21 @@ function exitPointDraw(x,y){
       }
     }
 
-    setVisuals();
+    setVisuals(true);
+    gameLevelCount=1;
+    for (var i=1;i<layerCount;i++){
+      var can=levelCanvasses[i];
+      for (var j=0;j<width*height;j++){
+        if (can[j]!==0){
+          gameLevelCount++;
+          break;
+        }
+      }
+      if (gameLevelCount===i){
+        break;
+      }
+    }
+    console.log("level count = "+gameLevelCount);
   }
 
   function setScoreText(includeHighScore){
@@ -2187,14 +2296,14 @@ function exitPointDraw(x,y){
   }
   
   function generateSweepSprings(
-    sourceCanvasIndex,
-    targetCanvasIndex
+    sourcestateIndex,
+    targetstateIndex
     ) {
 
-    var sourceCanvas=canvasses[sourceCanvasIndex];
-    var targetCanvas= canvasses[targetCanvasIndex];
-    var targetSweepArea = sweepAreas[sourceCanvasIndex][targetCanvasIndex];
-    var targetSweepAreaInverse = sweepAreas[targetCanvasIndex][sourceCanvasIndex];
+    var sourceCanvas=canvasses[sourcestateIndex];
+    var targetCanvas= canvasses[targetstateIndex];
+    var targetSweepArea = sweepAreas[sourcestateIndex][targetstateIndex];
+    var targetSweepAreaInverse = sweepAreas[targetstateIndex][sourcestateIndex];
 
     for (var regionNumberStr in boundingBoxes){
       var regionNumber=Number(regionNumberStr);
@@ -2533,7 +2642,7 @@ function exitPointDraw(x,y){
         elem.style.backgroundColor=colorPalette[0];
     }
 
-    setVisuals();
+    setVisuals(true,true);
   }
 
   function calcHalo(){
