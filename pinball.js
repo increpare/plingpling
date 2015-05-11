@@ -9,12 +9,10 @@
   var radius=5;
   var stateIndex=0;
   var canvasIndex=0;
-  var levelCanvasses = new Array();
   var canvasses = new Array();
   var VERSION=2;
   for (var i=0;i<16;i++){
     canvasses[i] = new Uint8Array(width*height);
-    levelCanvasses[i] = new Uint8Array(width*height);
   }
   var dirty=false;
   var exitTriggered=false;
@@ -35,6 +33,12 @@
   var shareLinkInner;
   var mainPaletteOffset=0;
   var layerCount=6;
+
+  var levelCanvasses = new Array();
+  for (var i=0;i<layerCount;i++){
+    levelCanvasses[i] = new Uint8Array(width*height);
+  }
+
   var lastDrawPosX=-1;
   var lastDrawPosY=-1;
   var score=0;
@@ -355,6 +359,10 @@ function shareClick() {
 
       } 
 
+      if(PLAYER!==true){
+        window.history.pushState({}, "plingpling game maker", "index.html?p="+id);
+      }
+
 
     }
   }
@@ -397,7 +405,7 @@ function stateToString(){
   state.canvasses=new Array();
   state.mainPaletteOffset=mainPaletteOffset;
   state.version=VERSION;
-  for (var i=0;i<16;i++){
+  for (var i=0;i<layerCount;i++){
     var canvas=levelCanvasses[i];
     var s="";
     for (var j=0;j<width*height;j++){
@@ -445,9 +453,13 @@ function stringToState(str){
   }
 
   levelCanvasses = new Array();
-  for (var k=0;k<state.canvasses.length;k++){
+  for (var k=0;k<layerCount;k++){
     var s = state.canvasses[k];
     var ar = new Uint8Array(width*height);
+    levelCanvasses.push(ar);
+    if (state.version===1&&k>0){
+      continue;
+    }
     var index=0;
     for (var i=0;i<s.length;i+=2){
       var count=s[i];
@@ -457,7 +469,6 @@ function stringToState(str){
         index++;
       }
     }
-    levelCanvasses.push(ar);
   }
 
   setLevel(1);
