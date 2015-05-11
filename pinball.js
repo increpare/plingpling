@@ -54,7 +54,7 @@
 
   var masterCanvas = new Uint8Array(width*height);
   var gameLevelCount=1;
-  
+
 
 /*
 //arne
@@ -128,7 +128,7 @@ var springCol=12;
 
 var lastPlacedLeftPivot=false;
 /*
-//spectrum 
+//spectrum
   var colorPalette = [
             "#000000",
             "#888888",
@@ -254,7 +254,7 @@ function connectCables(region1,region2){
     var tr = region1;
     region1=region2;
     region2=tr;
-  } 
+  }
 
 
   if (r2===null){
@@ -265,7 +265,7 @@ function connectCables(region1,region2){
 
   if (r1===null){
     r1=[region1];
-  } else{  
+  } else{
     connections.splice(r1i,1);
   }
 
@@ -328,11 +328,11 @@ function shareClick() {
   var githubURL = 'https://api.github.com/gists';
   var githubHTTPClient = new XMLHttpRequest();
   githubHTTPClient.open('POST', githubURL);
-  githubHTTPClient.onreadystatechange = function() {    
+  githubHTTPClient.onreadystatechange = function() {
     var errorCount=0;
     if(githubHTTPClient.readyState!=4) {
       return;
-    }   
+    }
     var result = JSON.parse(githubHTTPClient.responseText);
     if (githubHTTPClient.status===403) {
       errorCount++;
@@ -357,7 +357,7 @@ function shareClick() {
         alert("Cannot link directly to playable game, because there are errors.",true);
       } else {
 
-      } 
+      }
 
       if(PLAYER!==true){
         window.history.pushState({}, "plingpling game maker", "index.html?p="+id);
@@ -369,7 +369,7 @@ function shareClick() {
   githubHTTPClient.setRequestHeader("Content-type","application/x-www-form-urlencoded");
   var stringifiedGist = JSON.stringify(gistToCreate);
   githubHTTPClient.send(stringifiedGist);
-  lastDownTarget=masterCanvas;  
+  lastDownTarget=masterCanvas;
 }
 
 function RLE_encode(input) {
@@ -382,7 +382,7 @@ function RLE_encode(input) {
             count = 1;
             prev = input[i];
         }
-        else 
+        else
             count ++;
     }
     encoding.push(count);
@@ -411,7 +411,7 @@ function stateToString(){
     for (var j=0;j<width*height;j++){
       s+=canvas[j].toString(16);
     }
-    var pairs=RLE_encode(s);    
+    var pairs=RLE_encode(s);
     state.canvasses.push(pairs);
   }
   var result=JSON.stringify(state);
@@ -489,7 +489,7 @@ var keyBuffer=[];
 
 function applyCanvasSweep(sweepArea){
   var x = Math.round(bpx);
-  var y = Math.round(bpy);    
+  var y = Math.round(bpy);
   var points = [
                               [x+1,y+0],[x+2,y+0],
                   [x+0,y+1],[x+1,y+1],[x+2,y+1],[x+3,y+1],
@@ -576,18 +576,18 @@ function interpolateAreas(oldstateIndex,newstateIndex){
     }
   } else if (oldDown===0&&newDown===1){
     if (hasSpring){
-      playSound(67535707,true);    
+      playSound(67535707,true);
     }
   } else if ((oldLeft===0&&newLeft===1)){
     if (hasLeftPaddle){
       playSound(64004107,true);
-    } 
+    }
   }else if (oldRight===0&&newRight===1){
       if (hasRightPaddle){
         playSound(64004107,true);
       }
   }
-  
+
 
   var result = [oldstateIndex];
   if (oldLeft!=newLeft){
@@ -614,13 +614,13 @@ function setstateIndex(oldstateIndex,newstateIndex){
   for (var i=0;i<steps.length-1;i++){
     var source = steps[i];
     var target = steps[i+1];
-    
+
     var sweepArea =  sweepAreas[source][target];
 
     if (sweepArea==null){
       console.log( "setstateIndex not found " + source+" -> " + target );
       return;
-    } 
+    }
 
     applyCanvasSweep( sweepArea );
   }
@@ -628,12 +628,12 @@ function setstateIndex(oldstateIndex,newstateIndex){
 
 var tilting=false;
 
-function setFlipperCanvas(){  
+function setFlipperCanvas(){
   var oldstateIndex=stateIndex;
   stateIndex=0;
   if (keyBuffer[37]===true){//left
     stateIndex=1;
-  } 
+  }
   if (keyBuffer[39]===true){//right
     stateIndex+=2;
   }
@@ -691,7 +691,7 @@ function drawThumbnail(n){
   for (var i=0;i<25;i++){
     for (var j=0;j<28;j++){
       var max=0;
-      for (var i2=0;i2<10;i2++){              
+      for (var i2=0;i2<10;i2++){
         for (var j2=0;j2<10;j2++){
             var sample = canvas[i*5+i2+width*(j*5+j2)];
             if (sample>max){
@@ -700,7 +700,7 @@ function drawThumbnail(n){
         }
       }
       thumbCtx.fillStyle=colorPalette[max];
-      thumbCtx.fillRect(i,j,1,1);          
+      thumbCtx.fillRect(i,j,1,1);
     }
   }
 
@@ -722,7 +722,7 @@ function press(evt){
   } else if (evt.keyCode==76){//L(oad)
     stringToState(savedString);
     setVisuals();
-    setLevel(stateIndex+1); 
+    setLevel(stateIndex+1);
   } */
   if (evt.keyCode===188){
     cyclePalette(-1);
@@ -799,7 +799,9 @@ function press(evt){
   } else if (evt.keyCode===90){//z
     if (undoList.length>0){
       var dat = undoList.pop();
-      masterCanvas=dat.canvasDat;
+      for(var i = 0; i < dat.canvasDat.length; i++){
+        masterCanvas[i] = dat.canvasDat[i];
+      }
       compile();
       setVisuals(true);
       if (shareLinkInner!=null){
@@ -816,7 +818,7 @@ function press(evt){
 
   var bucketElem;
   function titleChange(newTitle){
-    gameTitle=newTitle;    
+    gameTitle=newTitle;
   }
 
   function linkChange(newLink){
@@ -910,8 +912,8 @@ function ballCollides(){
   function activateSwitch(index){
     var regionNumber = regionCanvas[index];
     var bbox = boundingBoxes[regionNumber];
-    for (var x=bbox[0];x<=bbox[2];x++){      
-      for (var y=bbox[1];y<=bbox[3];y++){   
+    for (var x=bbox[0];x<=bbox[2];x++){
+      for (var y=bbox[1];y<=bbox[3];y++){
         var i = x+width*y;
         if (regionCanvas[i]===regionNumber){
           for (var j=0;j<canvasses.length;j++){
@@ -978,10 +980,10 @@ function ballCollides(){
 
       var bbox = boundingBoxes[rowRegionNum];
 
-      for (var x=bbox[0];x<=bbox[2];x++){      
+      for (var x=bbox[0];x<=bbox[2];x++){
         for (var y=bbox[1];y<=bbox[3];y++){
           var index = x+width*y;
-          if (regionCanvas[index]===rowRegionNum){            
+          if (regionCanvas[index]===rowRegionNum){
             for (var j=0;j<canvasses.length;j++){
               var canvas=canvasses[j];
               if (canvas[index]===togglableWallCol){
@@ -1026,7 +1028,7 @@ function ballCollides(){
             val!==bumperAuraCol &&
             val!==ballSpawnCol &&
             val!==exitCol &&
-            val!==connectionCol && 
+            val!==connectionCol &&
             val!==targetActiveCol &&
             val!==togglableWallDisabledCol){
         var px = (index%width)+0.5;
@@ -1074,7 +1076,7 @@ function ballCollides(){
   var maxSpeed=3.0;
   var maxBallSpin=4.0;
   var spinDamp=0.0002;
-  function clampSpeed(){    
+  function clampSpeed(){
     var v=  [speedX,speedY];
     var speedMag = mag(v);
     if (speedMag>maxSpeed){
@@ -1122,7 +1124,7 @@ function ballCollides(){
     if (bpx<-10){
       if ((PLAYER&&exitTriggered) || (tilting===true)){
         setVisuals();
-      } 
+      }
       return;
     }
     var G=0.002;
@@ -1167,7 +1169,7 @@ function ballCollides(){
           avgy=speedX;
         } else {
           return;
-        }  
+        }
       }
 
       var normal = normalized([avgx,avgy]);
@@ -1206,15 +1208,15 @@ function ballCollides(){
       //add 50% of spin to the bounce
       speedX=bounceDamp*refl[0];
       speedY=bounceDamp*refl[1];
-      
+
       leftV = [-normal[1],normal[0]];
       var ballSpinAmount=1.0;
       speedX+=ballSpinAmount*ballSpin*leftV[0]/2;
       speedY+=ballSpinAmount*ballSpin*leftV[1]/2;
 
-      ballSpin/=2;      
+      ballSpin/=2;
       ballSpin+=direction*mag([speedX,speedY])*(1-bounceDamp)/2.0;
-      
+
       clampSpeed();
       nx = bpx+speedX;
       ny = bpy+speedY;
@@ -1252,13 +1254,13 @@ function ballCollides(){
         exitTriggered=true;
         wonindex=13;
         bpx=-1000;
-        bpy=-1000;     
+        bpy=-1000;
         alert(winText + "\n score : "+score);
         setScoreText(true);
         playSound(81031108);
       }
       tilting=false;
-      keyBuffer[38]=false; 
+      keyBuffer[38]=false;
     }
     setVisuals();
   }
@@ -1266,7 +1268,7 @@ function ballCollides(){
     function init() {
       setInterval(tick, tickLength);
 
-      if (PLAYER===true){        
+      if (PLAYER===true){
         scoreText = document.getElementById("scoreText");
         highScoreText = document.getElementById("highScoreText");
         setScoreText();
@@ -1278,13 +1280,13 @@ function ballCollides(){
         linkInput.value=gameLink;
 
         for (var i=0;i<layerCount;i++){
-          elem = document.getElementById("thumbnail"+(i+1));        
+          elem = document.getElementById("thumbnail"+(i+1));
           thumbnailCanvas[i]=elem;
           thumbnailContext[i]=elem.getContext("2d");
         }
 
         for (var i=0;i<layerCount;i++){
-          elem = document.getElementById("layerItem"+(i+1));        
+          elem = document.getElementById("layerItem"+(i+1));
           layerElem[i]=elem;
         }
 
@@ -1292,8 +1294,8 @@ function ballCollides(){
         winTextInput.value=winText;
 
         for (var i=0;i<16;i++){
-          elem = document.getElementById("color_"+(i)); 
-          if (elem!==null){       
+          elem = document.getElementById("color_"+(i));
+          if (elem!==null){
             elem.style.backgroundColor=colorPalette[i];
             colorElem[i]=elem;
           }
@@ -1302,7 +1304,7 @@ function ballCollides(){
         if (elem!==null){
             elem.style.backgroundColor=colorPalette[0];
         }
-      } 
+      }
 
       visibleCanvas = document.getElementById("mainCanvas");
 
@@ -1331,11 +1333,11 @@ function ballCollides(){
 
   function readFile(evt) {
     //Retrieve the first (and only!) File from the FileList object
-    var f = evt.target.files[0]; 
+    var f = evt.target.files[0];
 
     if (f) {
       var r = new FileReader();
-      r.onload = function(e) { 
+      r.onload = function(e) {
         var contents = e.target.result;
         //escapes below are to get around searching for a pattern in its own file messing things up
         var fromToken="\_\_EmbedBegin\_\_";
@@ -1347,11 +1349,11 @@ function ballCollides(){
         stringToState(decoded);
         setTexts();
         loaded=true;
-        setLevel(canvasIndex+1); 
+        setLevel(canvasIndex+1);
         setVisuals(true,true);
       }
       r.readAsText(f);
-    } else { 
+    } else {
       alert("Failed to load file");
     }
   }
@@ -1388,9 +1390,9 @@ function ballCollides(){
         titleInput.value=gameTitle;
         linkInput.value=gameLink;
         winTextInput.value=winText;
-    } 
+    }
   }
-  function getData(){ 
+  function getData(){
 
     if (embeddedDat[0]!=='_'){
       embeddedDat=decodeURI(embeddedDat);
@@ -1404,7 +1406,7 @@ function ballCollides(){
 
     var id = getParameterByName("p").replace(/[\\\/]/,"");
     if (id===null||id.length===0) {
-      
+
       return;
     }
 
@@ -1418,7 +1420,7 @@ function ballCollides(){
       hacklink.href=url;
       hacklink.innerHTML="&sdotb; edit";
     }
-    
+
     var githubURL = 'https://api.github.com/gists/'+id;
 
     var githubHTTPClient = new XMLHttpRequest();
@@ -1426,7 +1428,7 @@ function ballCollides(){
     githubHTTPClient.onreadystatechange = function() {
       if(githubHTTPClient.readyState!=4) {
         return;
-      }   
+      }
       var result = JSON.parse(githubHTTPClient.responseText);
       if (githubHTTPClient.status===403) {
         alert(result.message);
@@ -1435,7 +1437,7 @@ function ballCollides(){
       }
       var result = JSON.parse(githubHTTPClient.responseText);
       var code=result["files"]["game.txt"]["content"];
-      
+
       stringToState(code);
       setTexts();
       loaded=true;
@@ -1464,8 +1466,8 @@ function ballCollides(){
         visibleContext.fillRect(visibleCanvas.width/2,visibleCanvas.height/2,visibleCanvas.width/2,visibleCanvas.height/2);
         return;
       }
-      //visibleContext.drawImage(canvasses[stateIndex], 0, 0); 
-      //visibleContext.drawImage(canvasses[stateIndex], 0, 0,width*zoomFactor,height*zoomFactor); 
+      //visibleContext.drawImage(canvasses[stateIndex], 0, 0);
+      //visibleContext.drawImage(canvasses[stateIndex], 0, 0,width*zoomFactor,height*zoomFactor);
       var canvas=canvasses[stateIndex];
       var zoom = zoomFactor;
       if (tilting){
@@ -1484,10 +1486,10 @@ function ballCollides(){
             visibleContext.fillStyle=colorPalette[pixelIndex];
             if (pixelIndex===bumperCol && bumperHit>=0){
               if (regionCanvas[i+width*j]===bumperHit){
-                visibleContext.fillStyle=colorPalette[18];              
+                visibleContext.fillStyle=colorPalette[18];
               }
-            } 
-            visibleContext.fillRect(i*zoom,j*zoom,zoom,zoom);        
+            }
+            visibleContext.fillRect(i*zoom,j*zoom,zoom,zoom);
           }
         }
         return;
@@ -1498,10 +1500,10 @@ function ballCollides(){
           visibleContext.fillStyle=colorPalette[pixelIndex];
           if (pixelIndex===bumperCol && bumperHit>=0){
             if (regionCanvas[i+width*j]===bumperHit){
-              visibleContext.fillStyle=colorPalette[18];              
+              visibleContext.fillStyle=colorPalette[18];
             }
-          } 
-          visibleContext.fillRect(i*zoom,j*zoom,zoom,zoom);        
+          }
+          visibleContext.fillRect(i*zoom,j*zoom,zoom,zoom);
         }
       }
 
@@ -1535,11 +1537,11 @@ function ballCollides(){
       if (PLAYER!==true&&genAnyThumbnails===true){
         if (genAllThumbnails===true){
           for (var i=0;i<layerCount;i++){
-            drawThumbnail(i);                    
+            drawThumbnail(i);
           }
         } else {
             drawThumbnail(canvasIndex);
-        }      
+        }
       }
     }
 
@@ -1548,17 +1550,17 @@ function ballCollides(){
 
 
   function getCoords(e) {
-    var x,y; 
+    var x,y;
     if(typeof e.offsetX !== "undefined") {
         x = e.offsetX;
         y = e.offsetY;
     }
-    else {      
+    else {
       var target = e.target || e.srcElement;
       var rect = target.getBoundingClientRect();
       x = e.clientX - rect.left,
       y = e.clientY - rect.top;
-    } 
+    }
     return [x,y];
   }
 
@@ -1600,7 +1602,7 @@ function ballCollides(){
     startTargetY=coords[1];
     lastX=Math.floor(-1+startTargetX/zoomFactor);
     lastY=Math.floor(-1+startTargetY/zoomFactor);
-    
+
     preserveUndoState();
     mouseMove(e,e.type==="mousedown");
     if(radius===0){
@@ -1683,7 +1685,7 @@ function eraserDraw(x,y){
     if (px>=0&&px<width&&py>=0&&py<height){
       masterCanvas[px+width*py]=eraserCol;
     }
-  }   
+  }
 }
 
 function wallDraw(x,y){
@@ -1695,7 +1697,7 @@ function wallDraw(x,y){
     if (px>=0&&px<width&&py>=0&&py<height){
       masterCanvas[px+width*py]=wallCol;
     }
-  }   
+  }
 }
 
 function bumperDraw(x,y){
@@ -1707,7 +1709,7 @@ function bumperDraw(x,y){
     if (px>=0&&px<width&&py>=0&&py<height){
       masterCanvas[px+width*py]=bumperCol;
     }
-  }   
+  }
 }
 
 function flipperDraw(x,y){
@@ -1723,7 +1725,7 @@ function flipperDraw(x,y){
         masterCanvas[px+width*py]=flipperCol;
         }
     }
-  }   
+  }
 
 
   neighbours=[[x+1,y],[x,y+1],[x-1,y],[x,y-1]];
@@ -1739,7 +1741,7 @@ function flipperDraw(x,y){
       var val = masterCanvas[nx+width*ny];
       if (  val===leftFlipperPivotCol   ||
             val===rightFlipperPivotCol  ||
-            val===flipperCol 
+            val===flipperCol
           ) {
         if (foundflipper){
           masterCanvas[nx+width*ny]=flipperCol;
@@ -1796,7 +1798,7 @@ function leftFlipperPivotDraw(x,y){
       var val = masterCanvas[nx+width*ny];
       if (  val===leftFlipperPivotCol   ||
             val===rightFlipperPivotCol  ||
-            val===flipperCol 
+            val===flipperCol
           ) {
         masterCanvas[nx+width*ny]=flipperCol;
         fillCanvas[nx+width*ny]=1;
@@ -1833,7 +1835,7 @@ function rightFlipperPivotDraw(x,y){
       masterCanvas[nx+width*ny]=flipperCol;
     }
   }
-  
+
   fillCanvas[px+width*py]=1;
   for(var i=0;i<neighbours.length;i++){
     var n = neighbours[i];
@@ -1843,7 +1845,7 @@ function rightFlipperPivotDraw(x,y){
       var val = masterCanvas[nx+width*ny];
       if (  val===leftFlipperPivotCol   ||
             val===rightFlipperPivotCol  ||
-            val===flipperCol 
+            val===flipperCol
           ) {
         masterCanvas[nx+width*ny]=flipperCol;
         fillCanvas[nx+width*ny]=1;
@@ -1910,7 +1912,7 @@ function connectionDraw(x,y){
     if (px>=0&&px<width&&py>=0&&py<height){
       masterCanvas[px+width*py]=connectionCol;
     }
-  }   
+  }
 }
 
 function targetDraw(x,y){
@@ -1922,7 +1924,7 @@ function targetDraw(x,y){
     if (px>=0&&px<width&&py>=0&&py<height){
       masterCanvas[px+width*py]=targetCol;
     }
-  }   
+  }
 
 }
 
@@ -1935,7 +1937,7 @@ function togglableWallDraw(x,y){
     if (px>=0&&px<width&&py>=0&&py<height){
       masterCanvas[px+width*py]=togglableWallCol;
     }
-  }   
+  }
 }
 
 function springDraw(x,y){
@@ -1947,7 +1949,7 @@ function springDraw(x,y){
     if (px>=0&&px<width&&py>=0&&py<height){
       masterCanvas[px+width*py]=springCol;
     }
-  }   
+  }
 }
 
 function exitPointDraw(x,y){
@@ -2041,7 +2043,7 @@ function exitPointDraw(x,y){
      var p=points[i];
      brushFn(p[0],p[1]);
     }
-  
+
 
     var basicCanvas = canvasses[0];
     for (var i=0;i<basicCanvas.length;i++){
@@ -2057,7 +2059,7 @@ function exitPointDraw(x,y){
     var coords = getCoords(e);
     lastX=Math.floor(-1+coords[0]/zoomFactor);
     lastY=Math.floor(-1+coords[1]/zoomFactor);
-    
+
     lastDrawPosX=x;
     lastDrawPosY=y;
 
@@ -2071,7 +2073,7 @@ function exitPointDraw(x,y){
     boundingBoxes = {};
     pivotPoints = {};
     exitTriggered=false;
-    
+
     for (var i=0;i<width*height;i++){
       regionCanvas[i]=0;
     }
@@ -2125,7 +2127,7 @@ function exitPointDraw(x,y){
 
     if (exitPointCount===0){
       exitPointX=-10000;
-      exitPointY=-10000; 
+      exitPointY=-10000;
     } else {
       exitPointX/=exitPointCount;
       exitPointY/=exitPointCount;
@@ -2194,7 +2196,7 @@ function exitPointDraw(x,y){
 
   function fillRegion(x,y,regionNumber){
     var originCol=masterCanvas[x+width*y];
-    var originFlipper = 
+    var originFlipper =
       originCol===leftFlipperPivotCol ||
       originCol===rightFlipperPivotCol ||
       originCol===flipperCol;
@@ -2203,7 +2205,7 @@ function exitPointDraw(x,y){
      pivotPoints[regionNumber]=[x,y,1];
     } else if (originCol===rightFlipperPivotCol){
      pivotPoints[regionNumber]=[x,y,2];
-    } 
+    }
 
     regionCoordIndex=x+width*y;
     regionCanvas[regionCoordIndex]=regionNumber;
@@ -2290,7 +2292,7 @@ function exitPointDraw(x,y){
       }
       var bbox = boundingBoxes[regionNumber];
       var bottomy=bbox[3];
-      for (var x=bbox[0];x<=bbox[2];x++){      
+      for (var x=bbox[0];x<=bbox[2];x++){
         for (var y=bbox[1];y<=bbox[3];y++){
           var i = x+width*y;
           if (regionCanvas[i]===regionNumber){
@@ -2305,7 +2307,7 @@ function exitPointDraw(x,y){
       }
     }
   }
-  
+
   function generateSweepSprings(
     sourcestateIndex,
     targetstateIndex
@@ -2326,8 +2328,8 @@ function exitPointDraw(x,y){
       var topy=bbox[1];
       var bheight=bottomy-topy;
 
-      for (var x=bbox[0];x<=bbox[2];x++){      
-        for (var y=bbox[1];y<=bbox[3];y++){          
+      for (var x=bbox[0];x<=bbox[2];x++){
+        for (var y=bbox[1];y<=bbox[3];y++){
           var i = x+width*y;
           if (regionCanvas[i]===regionNumber){
             var altitude = bottomy-y;
@@ -2361,7 +2363,7 @@ function exitPointDraw(x,y){
             for (var j=0;j<linePoints.length;j++){
               var lp=linePoints[j];
               var lpx=lp[0];
-              var lpy=lp[1];              
+              var lpy=lp[1];
               var index3 = lpx+width*lpy;
               targetSweepArea[index3]=targetindex;
               targetSweepAreaInverse[index3]=sourceindex;
@@ -2384,9 +2386,9 @@ function exitPointDraw(x,y){
     var sourceCanvas = canvasses[sourceIndex];
     var leftTargetCanvas =                  targetLeftIndex>=0  ? canvasses[targetLeftIndex]                  : null;
     var rightTargetCanvas =                 targetRightIndex>=0 ? canvasses[targetRightIndex]                 : null;
-    var leftTargetSweepCanvas =             targetLeftIndex>=0  ? sweepAreas[sourceIndex][targetLeftIndex]    : null; 
+    var leftTargetSweepCanvas =             targetLeftIndex>=0  ? sweepAreas[sourceIndex][targetLeftIndex]    : null;
     var rightTargetSweepCanvas =            targetRightIndex>=0 ? sweepAreas[sourceIndex][targetRightIndex]   : null;
-    var leftTargetInverseSweepCanvas =      targetLeftIndex>=0  ? sweepAreas[targetLeftIndex][sourceIndex]    : null; 
+    var leftTargetInverseSweepCanvas =      targetLeftIndex>=0  ? sweepAreas[targetLeftIndex][sourceIndex]    : null;
     var rightTargetInverseSweepCanvas =     targetRightIndex>=0 ? sweepAreas[targetRightIndex][sourceIndex]   : null;
 
   //step 1 - generate for just going to flip left/right from resting
@@ -2420,7 +2422,7 @@ function exitPointDraw(x,y){
         var px=ppoint[0];
         var py=ppoint[1];
         theta=Math.PI*targetAngle/180.0;
-        for (var x=bbox[0];x<=bbox[2];x++){      
+        for (var x=bbox[0];x<=bbox[2];x++){
           for (var y=bbox[1];y<=bbox[3];y++){
             var i = x+width*y;
             if (regionCanvas[i]===regionNumber){
@@ -2432,7 +2434,7 @@ function exitPointDraw(x,y){
               var targety=Math.round(targetyExact);
 
               var diff=-1;
-              
+
               if (orientation===1){
                 if (targetxExact<px){
                   diff=+1;
@@ -2469,7 +2471,7 @@ function exitPointDraw(x,y){
               for (var j=0;j<linePoints.length;j++){
                 var lp=linePoints[j];
                 var lpx=lp[0];
-                var lpy=lp[1];              
+                var lpy=lp[1];
                 var index3 = lpx+width*lpy;
                 targetSweepArea[index3]=targetindex;
                 //canvasses[0][index3]=8;
@@ -2586,7 +2588,7 @@ function exitPointDraw(x,y){
       var px=ppoint[0];
       var py=ppoint[1];
       theta=Math.PI*targetAngle/180.0;
-      for (var x=bbox[0];x<=bbox[2];x++){      
+      for (var x=bbox[0];x<=bbox[2];x++){
         for (var y=bbox[1];y<=bbox[3];y++){
           var i = x+width*y;
           if (regionCanvas[i]===regionNumber){
@@ -2635,15 +2637,15 @@ function exitPointDraw(x,y){
 
     mainPaletteOffset = (mainPaletteOffset+colCount+offset)%colCount;
     colorPalette = [];
-    for (var i=1;i<sourcePalette.length;i++){      
+    for (var i=1;i<sourcePalette.length;i++){
       colorPalette[i]=sourcePalette[((i+mainPaletteOffset-1)%colCount)+1]
     }
     colorPalette[0]=colorPalette[1];
 
 
     for (var i=0;i<16;i++){
-      elem = document.getElementById("color_"+(i)); 
-      if (elem!==null){       
+      elem = document.getElementById("color_"+(i));
+      if (elem!==null){
         elem.style.backgroundColor=colorPalette[i];
         colorElem[i]=elem;
       }
@@ -2674,7 +2676,7 @@ function exitPointDraw(x,y){
             if (v===bumperCol){
               masterCanvas[x+width*y]=bumperAuraCol;
               break;
-            } 
+            }
           }
         }
       }
@@ -2702,7 +2704,7 @@ function exitPointDraw(x,y){
         canvas[pIndex]=colorIndex;
         borderPoints = [[p[0]+1,p[1]],[p[0]-1,p[1]],[p[0],p[1]+1],[p[0],p[1]-1]];
         for (var j=0;j<borderPoints.length;j++){
-          var borderPoint=borderPoints[j]; 
+          var borderPoint=borderPoints[j];
           var borderpx=borderPoint[0];
           var borderpy=borderPoint[1];
           var bpi=bpx+width*bpy;
