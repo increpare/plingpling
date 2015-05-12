@@ -665,7 +665,12 @@ function prevent(e) {
 }
 
 
-function setLevel(newCanvasIndex) {
+function setLevel(newCanvasIndex,force) {
+  if ((newCanvasIndex-1)===canvasIndex){
+    if (!(force===true)){
+      return;
+    }
+  }
 
   canvasIndex=newCanvasIndex-1;
   masterCanvas=levelCanvasses[canvasIndex];
@@ -799,9 +804,12 @@ function press(evt){
   } else if (evt.keyCode===90){//z
     if (undoList.length>0){
       var dat = undoList.pop();
-      masterCanvas=dat.canvasDat;
+      setLevel(dat.canvasIndex+1);
+      for(var i = 0; i < dat.canvasDat.length; i++){
+        masterCanvas[i] = dat.canvasDat[i];
+      }
       compile();
-      setVisuals(true);
+      setVisuals(true,true);
       if (shareLinkInner!=null){
         shareLinkInner.style.color="gray";
       }
@@ -1322,7 +1330,7 @@ function ballCollides(){
       visibleContext.imageSmoothingEnabled= false;
       id = visibleContext.createImageData(1,1); // only do this once per page
       id_d=id.data;
-      setLevel(1);
+      setLevel(1,true);
       setVisuals(true);
 
       getData();
@@ -1581,6 +1589,8 @@ function ballCollides(){
     console.log("preserving undo state");
     var undoItem = new Object();
     undoItem.canvasDat=uint8ar_copy(masterCanvas);
+    undoItem.canvasIndex=canvasIndex;
+
     undoList.push(undoItem);
     if (undoList.length>30){
       undoList.shift();
