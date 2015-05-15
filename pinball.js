@@ -447,7 +447,7 @@ function stringToState(str){
   }
   stateIndex=0;
 
-  canvasIndex = state.canvasIndex;
+  canvasIndex = state.canvasIndex; 
   if (canvasIndex==null){
     canvasIndex = 0;
   }
@@ -471,10 +471,10 @@ function stringToState(str){
     }
   }
 
-  setLevel(1);
   stateIndex=0;
   compile();
   setScoreText(true);
+  setLevel(1,true);
 }
 
 document.addEventListener("keydown", press);
